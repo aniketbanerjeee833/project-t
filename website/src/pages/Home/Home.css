@@ -1,0 +1,139 @@
+/* ================= HERO SLIDER ================= */
+
+/* Main slide container */
+.single-slide {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Background image */
+.slide-bg-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 1;
+}
+
+/* Dark overlay */
+.slide-bg-img::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 2;
+}
+
+/* Text wrapper */
+.welcome-text {
+  position: relative;
+  z-index: 3;
+}
+
+/* Heading */
+.welcome-text h2 {
+  color: #fff;
+  font-size: 60px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+/* Highlight OR */
+.welcome-text span {
+  color: red;
+}
+
+/* Paragraph */
+.welcome-text p {
+  color: #ddd;
+  font-size: 16px;
+  max-width: 700px;
+  margin: 20px auto 0;
+  line-height: 1.6;
+}
+
+/* ================= SWIPER ARROWS ================= */
+
+/* Hide default arrow icon */
+.swiper-button-prev::after,
+.swiper-button-next::after {
+  display: none;
+}
+
+/* Arrow base */
+.swiper-button-prev,
+.swiper-button-next {
+  width: 40px;
+  height: 40px;
+  background: black;
+  border-radius: 50%;
+  opacity: 0.8;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Left arrow */
+.swiper-button-prev::before {
+  content: "<";
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Right arrow */
+.swiper-button-next::before {
+  content: ">";
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Hover effect */
+.swiper-button-prev:hover,
+.swiper-button-next:hover {
+  background: red;
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* ================= PAGINATION DOTS ================= */
+
+.swiper-pagination {
+  bottom: 25px !important;
+}
+
+.swiper-pagination-bullet {
+  background: white;
+  opacity: 0.5;
+  width: 8px;
+  height: 8px;
+}
+
+.swiper-pagination-bullet-active {
+  background: red;
+  opacity: 1;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 768px) {
+  .welcome-text h2 {
+    font-size: 32px;
+  }
+
+  .welcome-text p {
+    font-size: 14px;
+  }
+
+  .swiper-button-prev,
+  .swiper-button-next {
+    width: 30px;
+    height: 30px;
+  }
+}
