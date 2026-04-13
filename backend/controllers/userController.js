@@ -202,6 +202,7 @@ const loginUser = async (req, res, next) => {
     });
   } catch (err) {
     console.error("Login Error:", err);
+    return res.status(500).json({ success: false, message: "An error occurred during login" });
    //next(err);
   }
 };

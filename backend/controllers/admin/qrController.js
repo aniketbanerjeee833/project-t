@@ -59,7 +59,7 @@ const createQR = async (req, res) => {
 
     // ✅ 4. ensure folder exists
     // const qrDir = path.join(__dirname, "../uploads/admin/qr");
-const qrDir = path.join(process.cwd(), "uploads/admin/qr");
+    const qrDir = path.join(process.cwd(), "uploads/admin/qr");
     if (!fs.existsSync(qrDir)) {
       fs.mkdirSync(qrDir, { recursive: true });
     }
@@ -85,10 +85,16 @@ const qrDir = path.join(process.cwd(), "uploads/admin/qr");
     let result;
 
     try {
+      // [result] = await connection.query(
+      //   `INSERT INTO new_qr 
+      //     (code, link, image, status, status2, deliver, date1, date2, date3)
+      //    VALUES (?, ?, ?, '0', '', 0, ?, '', '')`,
+      //   [code, link, imageCol, today]
+      // );
       [result] = await connection.query(
         `INSERT INTO new_qr 
-          (code, link, image, status, status2, deliver, date1, date2, date3)
-         VALUES (?, ?, ?, '0', '', 0, ?, '', '')`,
+    (code, link, image, status, status2, deliver, date1, date2, date3)
+   VALUES (?, ?, ?, '0', NULL, 0, ?, NULL, NULL)`,
         [code, link, imageCol, today]
       );
 
@@ -108,10 +114,16 @@ const qrDir = path.join(process.cwd(), "uploads/admin/qr");
 
         const newImageCol = `qr/${newFileName}`;
 
+        // [result] = await connection.query(
+        //   `INSERT INTO new_qr 
+        //     (code, link, image, status, status2, deliver, date1, date2, date3)
+        //    VALUES (?, ?, ?, '0', '', 0, ?, '', '')`,
+        //   [newCode, newLink, newImageCol, today]
+        // );
         [result] = await connection.query(
           `INSERT INTO new_qr 
-            (code, link, image, status, status2, deliver, date1, date2, date3)
-           VALUES (?, ?, ?, '0', '', 0, ?, '', '')`,
+    (code, link, image, status, status2, deliver, date1, date2, date3)
+   VALUES (?, ?, ?, '0', NULL, 0, ?, NULL, NULL)`,
           [newCode, newLink, newImageCol, today]
         );
 
@@ -160,6 +172,9 @@ const qrDir = path.join(process.cwd(), "uploads/admin/qr");
     if (connection) connection.release();
   }
 };
+
+
+
 const getAllQR = async (req, res) => {
   try {
     // query params
@@ -178,6 +193,7 @@ const getAllQR = async (req, res) => {
         WHERE code LIKE ? 
         OR status LIKE ? 
         OR DATE_FORMAT(date1, '%Y-%m-%d') LIKE ?
+       
       `;
       values = [`%${search}%`, `%${search}%`, `%${search}%`];
     }
@@ -191,6 +207,7 @@ const getAllQR = async (req, res) => {
         DATE_FORMAT(date3, '%Y-%m-%d') AS date3,
         id, code, link, image, status, status2, deliver
       FROM new_qr
+      WHERE deliver=0
       ${searchQuery}
       ORDER BY id DESC
       LIMIT ? OFFSET ?
@@ -215,7 +232,7 @@ const getAllQR = async (req, res) => {
       data: rows,
       pagination: {
         total,
-       
+
         limit,
         totalPages: Math.ceil(total / limit),
         currentPage: page,
@@ -227,4 +244,471 @@ const getAllQR = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
-export { createQR, getAllQR };
+
+
+const printQR = async (req, res) => {
+  let connection;
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "ID is required" });
+    }
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    const [rows] = await db.query(`SELECT * FROM new_qr WHERE id = ?`, [id]);
+
+    if (rows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: "QR not found" });
+    }
+    const [result]=await connection.query(
+      `UPDATE new_qr SET  deliver=deliver+1,date2 = NOW() WHERE id = ?`,
+      [id]
+    );
+    if(result.affectedRows===0){
+      await connection.rollback();
+      return res.status(500).json({ success: false, message: "Failed to update deliver count" });
+    }
+
+    await connection.commit();
+    return res.status(200).json({ success: true, data: rows[0] });
+
+  } catch (err) {
+    console.error("printQR error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+const getAllPrintedQRs = async (req, res) => {
+  try {
+    // 🔥 query params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+
+    const offset = (page - 1) * limit;
+
+    // 🔥 search condition
+    let searchQuery = "";
+    let params = [];
+
+    if (search) {
+      searchQuery = `
+        AND (
+          code LIKE ? OR 
+          status LIKE ?
+        )
+      `;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    // ✅ MAIN QUERY (paginated)
+    const [rows] = await db.query(
+      `SELECT 
+        id,
+        code,
+        link,
+        image,
+        status,
+        status2,
+        deliver,
+        DATE_FORMAT(date1, '%Y-%m-%d') AS created_date,
+        DATE_FORMAT(date2, '%Y-%m-%d') AS printed_date,
+        DATE_FORMAT(date3, '%Y-%m-%d') AS delivered_date
+      FROM new_qr
+      WHERE date2 IS NOT NULL
+      AND status2 IS NULL
+      AND deliver=1
+      ${searchQuery}
+      ORDER BY date2 DESC
+      LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    // ✅ COUNT QUERY
+    const [countRows] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM new_qr
+       WHERE date2 IS NOT NULL
+       AND status2 IS NULL
+       AND deliver=1
+       ${searchQuery}`,
+      params
+    );
+
+    const total = countRows[0].total;
+
+    return res.status(200).json({
+      success: true,
+     
+      data: rows,
+      pagination:{
+         total,
+     
+      limit,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      }
+    });
+
+  } catch (err) {
+    console.error("getAllPrintedQRs error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+const addQRTo1Year = async (req, res) => {
+  let connection;
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "ID is required" });
+    }
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    const [rows] = await connection.query(
+      `SELECT * FROM new_qr WHERE code = ? FOR UPDATE`,
+      [id]
+    );
+    // const [rows] = await connection.query(`SELECT * FROM new_qr WHERE code = ?`, [id]);
+    if(rows.length === 0){
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: "QR not found" });
+    }else if(rows[0].deliver === 0){
+      await connection.rollback();
+      return res.status(400).json({ success: false, message: "QR has not been printed yet" });
+    }
+
+    const [result] = await connection.query(
+      `UPDATE new_qr SET status2=0, deliver=deliver+1, date3 = DATE_ADD(date2, INTERVAL 1 YEAR) WHERE code = ?`,
+      [id]
+    );
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: "QR not found" });
+    }
+    await connection.commit();
+    return res.status(200).json({ success: true, message: "QR added to 1 year" });
+  } catch (err) {
+     if (connection) await connection.rollback();
+    console.error("addQRTo1Year error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }finally {
+    if (connection) connection.release();
+  }
+};
+const getAll1YearQRs = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+
+    const offset = (page - 1) * limit;
+
+    let searchQuery = "";
+    let params = [];
+
+    if (search) {
+      searchQuery = `AND (code LIKE ? OR status LIKE ? OR status2 LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    const [rows] = await db.query(
+      `SELECT 
+        id, code, link, image, status, status2, deliver,
+        DATE_FORMAT(date1, '%Y-%m-%d') AS created_date,
+        DATE_FORMAT(date2, '%Y-%m-%d') AS printed_date,
+        DATE_FORMAT(date3, '%Y-%m-%d') AS delivery_date
+      FROM new_qr
+      WHERE date2 IS NOT NULL
+        AND date3 IS NOT NULL
+        AND status2 = 0
+        ${searchQuery}
+      ORDER BY updated_at DESC
+      LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    const [countRows] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM new_qr
+       WHERE date2 IS NOT NULL
+         AND date3 IS NOT NULL
+         AND status2 = 0
+         ${searchQuery}`,
+      params
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: rows,
+      pagination: {
+        total: countRows[0].total,
+        limit,
+        totalPages: Math.ceil(countRows[0].total / limit),
+        currentPage: page,
+      },
+    });
+
+  } catch (err) {
+    console.error("1year error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+const addQRTo6Months = async (req, res) => {
+  let connection;
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "ID is required" });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    // const [rows] = await connection.query(
+    //   `SELECT * FROM new_qr WHERE code = ?`,
+    //   [id]
+    // );
+ const [rows] = await connection.query(
+      `SELECT * FROM new_qr WHERE code = ? FOR UPDATE`,
+      [id]
+    );
+    if (rows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: "QR not found" });
+    }
+
+    if (rows[0].deliver === 0) {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "QR has not been printed yet",
+      });
+    }
+
+    const [result] = await connection.query(
+      `UPDATE new_qr 
+       SET status2=2, deliver=deliver+1, date3 = DATE_ADD(date2, INTERVAL 6 MONTH) 
+       WHERE code = ?`,
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: "QR not found" });
+    }
+
+    await connection.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: "QR added to 6 months",
+    });
+
+  } catch (err) {
+    if (connection) await connection.rollback();
+    console.error("addQRTo6Months error:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+
+  } finally {
+    if (connection) connection.release();
+  }
+};
+const getAll6MonthsQRs = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+
+    const offset = (page - 1) * limit;
+
+    let searchQuery = "";
+    let params = [];
+
+    if (search) {
+      searchQuery = `AND (code LIKE ? OR status LIKE ? OR status2 LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    const [rows] = await db.query(
+      `SELECT 
+        id, code, link, image, status, status2, deliver,
+        DATE_FORMAT(date1, '%Y-%m-%d') AS created_date,
+        DATE_FORMAT(date2, '%Y-%m-%d') AS printed_date,
+        DATE_FORMAT(date3, '%Y-%m-%d') AS delivery_date
+      FROM new_qr
+      WHERE date2 IS NOT NULL
+        AND date3 IS NOT NULL
+        AND status2 = 2
+        ${searchQuery}
+      ORDER BY updated_at DESC
+      LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    const [countRows] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM new_qr
+       WHERE date2 IS NOT NULL
+         AND date3 IS NOT NULL
+         AND status2 = 2
+         ${searchQuery}`,
+      params
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: rows,
+      pagination: {
+        total: countRows[0].total,
+        limit,
+        totalPages: Math.ceil(countRows[0].total / limit),
+        currentPage: page,
+      },
+    });
+
+  } catch (err) {
+    console.error("6month error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+const addQRTo3Months = async (req, res) => {
+  let connection;
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "ID is required" });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    // const [rows] = await connection.query(
+    //   `SELECT * FROM new_qr WHERE code = ?`,
+    //   [id]
+    // );
+     const [rows] = await connection.query(
+      `SELECT * FROM new_qr WHERE code = ? FOR UPDATE`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: "QR not found" });
+    }
+
+    if (rows[0].deliver === 0) {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "QR has not been printed yet",
+      });
+    }
+
+    const [result] = await connection.query(
+      `UPDATE new_qr 
+       SET status2=1, deliver=deliver+1, date3 = DATE_ADD(date2, INTERVAL 3 MONTH) 
+       WHERE code = ?`,
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: "QR not found" });
+    }
+
+    await connection.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: "QR added to 3 months",
+    });
+
+  } catch (err) {
+    if (connection) await connection.rollback();
+    console.error("addQRTo3Months error:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+
+  } finally {
+    if (connection) connection.release();
+  }
+};
+const getAll3MonthsQRs = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+
+    const offset = (page - 1) * limit;
+
+    let searchQuery = "";
+    let params = [];
+
+    if (search) {
+      searchQuery = `
+        AND (code LIKE ? OR status LIKE ? OR status2 LIKE ?)
+      `;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    const [rows] = await db.query(
+      `SELECT 
+        id, code, link, image, status, status2, deliver,
+        DATE_FORMAT(date1, '%Y-%m-%d') AS created_date,
+        DATE_FORMAT(date2, '%Y-%m-%d') AS printed_date,
+        DATE_FORMAT(date3, '%Y-%m-%d') AS delivery_date
+      FROM new_qr
+      WHERE date2 IS NOT NULL 
+        AND date3 IS NOT NULL
+        AND status2 = 1
+        ${searchQuery}
+      ORDER BY updated_at DESC
+      LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    const [countRows] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM new_qr
+       WHERE date2 IS NOT NULL 
+         AND date3 IS NOT NULL
+         AND status2 = 1
+         ${searchQuery}`,
+      params
+    );
+
+    const total = countRows[0].total;
+
+    return res.status(200).json({
+      success: true,
+      data: rows,
+      pagination: {
+        total,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+      },
+    });
+
+  } catch (err) {
+    console.error("getAll3MonthsQRs error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+export { createQR, getAllQR, printQR, getAllPrintedQRs, addQRTo1Year, addQRTo6Months, addQRTo3Months,
+getAll1YearQRs, getAll6MonthsQRs, getAll3MonthsQRs
+ };
