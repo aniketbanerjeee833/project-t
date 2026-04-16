@@ -18,7 +18,9 @@ import { createProfile, getAllProfilesByUser, getIndividualProfileById,
     editProfileImage,
     linkProductToQR,
     getIndividualProfileByQRCode,
-    unlinkProductFromQR} from "../controllers/profileController.js";
+    unlinkProductFromQR,
+    getIndividualProfileByTagId,
+    updateViewOrHideData} from "../controllers/profileController.js";
 import createUploader from "../utils/upload.js";
 
 
@@ -31,7 +33,7 @@ router.patch("/edit-profile-image/:id", userUpload.single("image"), editProfileI
 router.delete("/delete/:id", deleteIndividualProfile);
 router.get("/my-profile", getAllProfilesByUser);
 router.get("/profile/:id", getIndividualProfileById); // for single profile details, can be used in future
-
+router.get("/profile-by-tag-id/:tagId",getIndividualProfileByTagId)
 router.put("/address/edit/:id", editAddress);
 
 
@@ -59,4 +61,7 @@ router.delete("/insurance/delete/:id", deleteInsurance);
 router.post("/link-product-qr/:id", linkProductToQR);
 router.patch("/unlink-product-qr/:id", unlinkProductFromQR);
 router.get("/profile-details-qr/:code", getIndividualProfileByQRCode); // for QR code scanning and fetching profile details
+
+router.patch("/update-view-status/:id", updateViewOrHideData);
+
 export default router;

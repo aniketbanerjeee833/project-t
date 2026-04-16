@@ -199,13 +199,19 @@ const handleViewProfile = (id) => {
       profiles.map((profile) => (
         <div className="profile-item" key={profile.id}>
           <div className="profile-left">
-            <img
+            {/* <img
               src={
                 profile.image
-                  ? `http://localhost:4000/${profile.image}`
+                  ? `http://localhost:4000/uploads/${profile.image}`
                   : "/assets/img/user.png"
               }
-            />
+            /> */}
+            {profile.image && (
+              <img
+                src={`http://localhost:4000/uploads/${profile.image}`}
+                alt={profile.name}
+              />
+            )}
             <h5>{profile.name}</h5>
           </div>
 

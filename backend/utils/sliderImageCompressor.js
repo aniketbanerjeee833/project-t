@@ -1,8 +1,4 @@
-import sharp from "sharp";
-import fs from "fs";
-import path from "path";
-
-const compressProductImage = async (filePath, folder = "admin/products") => {
+const compressSliderImage = async (filePath, folder = "admin/slider_image") => {
   const fileName = `${Date.now()}-${Math.floor(Math.random() * 9999)}.jpg`;
 
   const outputDir = `uploads/${folder}`;
@@ -15,14 +11,13 @@ const compressProductImage = async (filePath, folder = "admin/products") => {
   const outputPath = `${outputDir}/${fileName}`;
 
   await sharp(filePath)
-    .jpeg({ quality: 40 }) // better balance
+    .jpeg({ quality: 40 })
     .toFile(outputPath);
 
   // delete original uploaded file
   fs.unlinkSync(filePath);
 
-  // return DB path (clean URL)
-  return `${folder}/${fileName}`;
+  return `${folder}/${fileName}`; // DB path
 };
 
-export default compressProductImage;
+export default compressSliderImage;

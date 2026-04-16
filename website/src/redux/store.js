@@ -14,6 +14,8 @@ const fixedStorage = storage?.default ? storage.default : storage;
 // const persistStorage = storage;
 import { userApi } from "./api/userApi";
 import { profileApi } from "./api/profileApi";
+import { shopApi } from "./api/shopApi";
+import { homeWebsiteApi } from "./api/homeWebsiteApi";
 
 
 
@@ -26,6 +28,8 @@ const rootReducer = combineReducers({
    user: userReducer,
   [userApi.reducerPath]: userApi.reducer,
   [profileApi.reducerPath]: profileApi.reducer,
+  [shopApi.reducerPath]: shopApi.reducer,
+  [homeWebsiteApi.reducerPath]: homeWebsiteApi.reducer,
  
  
  
@@ -49,6 +53,9 @@ const store = configureStore({
       
       userApi.middleware,
       profileApi.middleware,
+      shopApi.middleware,
+      homeWebsiteApi.middleware
+
      
     ),
 });

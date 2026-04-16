@@ -4,7 +4,9 @@ import express from "express";
 
 import userAuth from "../../middleware/userAuth.js";
 import adminAuth from "../../middleware/adminAuth.js";
-import { addQRTo1Year, addQRTo3Months, addQRTo6Months, createQR, getAll1YearQRs, getAll3MonthsQRs, getAll6MonthsQRs, getAllPrintedQRs, getAllQR, printQR } from "../../controllers/admin/QrController.js";
+import { addQRTo1Year, addQRTo3Months, addQRTo6Months, createQR, 
+    getAll1YearQRs, getAll3MonthsQRs, getAll6MonthsQRs, getAllPrintedQRs, getAllQR, 
+    printQR } from "../../controllers/admin/QrController.js";
 
 const router = express.Router();
 

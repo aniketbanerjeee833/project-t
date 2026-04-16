@@ -6,6 +6,7 @@ import {
   useAddMedicationMutation, useDeleteAllergyMutation, useDeleteConditionMutation, useDeleteEmergencyContactMutation, useDeleteInsuranceMutation, useDeleteMedicationMutation, useEditAddressMutation, useEditAllergyMutation, useEditConditionMutation, useEditEmergencyContactMutation, useEditInsuranceMutation, useEditMedicationMutation, useEditProfileImageMutation, useEditProfileMutation, useGetIndividualProfileByIdQuery,
   useLinkProductToQRMutation,
   useUnlinkProductFromQRMutation,
+  useUpdateViewOrHideDataMutation,
 
 } from "../../redux/api/profileApi";
 import CommonProfileModal from "../../components/Modal/CommonProfileModal";
@@ -69,6 +70,8 @@ export default function EditProfile() {
 
   const [editInformation] = useEditProfileMutation();
 
+  const[updateViewStatus]=useUpdateViewOrHideDataMutation();
+
   const [addEmergency] = useAddEmergencyContactMutation();
   const [editEmergency] = useEditEmergencyContactMutation();
   const [deleteEmergency] = useDeleteEmergencyContactMutation();
@@ -86,6 +89,17 @@ export default function EditProfile() {
   const [deleteInsurance] = useDeleteInsuranceMutation();
   const [deleteCondition] = useDeleteConditionMutation();
 
+  const handleUpdateViewStatus = async (id) => {
+    try {
+      const res=await updateViewStatus( id).unwrap();
+      if(res.success){
+        toast.success(res.message||"View status updated");
+      }
+      // refetch();
+    } catch (error) {
+      console.error("Error updating view status:", error);
+    }
+  };
   const formatDOB = (dob) => {
     if (!dob) return "0000-00-00";
 
@@ -96,6 +110,7 @@ export default function EditProfile() {
     return dob.split("T")[0];
   };
   const individualProfile = profile?.data; // adjust based on actual API response structure
+  console.log(individualProfile, "individualProfile")
   const hasPersonalData =
     individualProfile?.name ||
     individualProfile?.phone ||
@@ -343,10 +358,10 @@ export default function EditProfile() {
       await refetch();
     } catch (err) { console.error("Vet Detail Save Error:", err); }
   };
-  const handleDeleteVetDetail = async (rowId) => {
-    try { await deleteInsurance(rowId).unwrap(); await refetch(); }
-    catch (err) { console.error(err); }
-  };
+  // const handleDeleteVetDetail = async (rowId) => {
+  //   try { await deleteInsurance(rowId).unwrap(); await refetch(); }
+  //   catch (err) { console.error(err); }
+  // };
 
 
 
@@ -386,10 +401,10 @@ export default function EditProfile() {
     } catch (err) { console.error("Instruction Save Error:", err); }
   };
 
-  const handleDeleteInstruction = async (rowId) => {
-    try { await deleteCondition(rowId).unwrap(); await refetch(); }
-    catch (err) { console.error(err); }
-  };
+  // const handleDeleteInstruction = async (rowId) => {
+  //   try { await deleteCondition(rowId).unwrap(); await refetch(); }
+  //   catch (err) { console.error(err); }
+  // };
 
 
   const handleAddAllergy = () => { setEditingItem(null); setFormData({ name: "", notes: "" }); };
@@ -484,10 +499,12 @@ export default function EditProfile() {
     });
   };
 
-  const handleDeleteEmergency = async (rowId) => {
-    try { await deleteEmergency(rowId).unwrap(); await refetch(); }
-    catch (err) { console.error(err); }
-  };
+  // const handleDeleteEmergency = async (rowId) => {
+
+  //   try { await deleteEmergency(rowId).unwrap(); await refetch(); }
+  //   catch (err) { console.error(err); }
+  // };
+
 
   const handleSaveEmergency = async () => {
     try {
@@ -565,10 +582,105 @@ export default function EditProfile() {
     } catch (err) { console.error("Condition Save Error:", err); }
   };
 
-  const handleDeleteAllergy = async (rowId) => { try { await deleteAllergy(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
-  const handleDeleteMedication = async (rowId) => { try { await deleteMedication(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
-  const handleDeleteInsurance = async (rowId) => { try { await deleteInsurance(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
-  const handleDeleteCondition = async (rowId) => { try { await deleteCondition(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
+    const handleDeleteEmergency = async (rowId) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this item?");
+
+  if (!confirmDelete) return;
+
+  try {
+    await deleteEmergency(rowId).unwrap();
+    toast.success("Emergency contact deleted successfully ✅");
+    await refetch();
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to delete emergency contact ❌");
+  }
+};
+  const handleDeleteAllergy = async (rowId) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this allergy?");
+  if (!confirmDelete) return;
+
+  try {
+    await deleteAllergy(rowId).unwrap();
+    toast.success("Allergy deleted successfully ✅");
+    await refetch();
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to delete allergy ❌");
+  }
+};
+
+const handleDeleteMedication = async (rowId) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this medication?");
+  if (!confirmDelete) return;
+
+  try {
+    await deleteMedication(rowId).unwrap();
+    toast.success("Medication deleted successfully ✅");
+    await refetch();
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to delete medication ❌");
+  }
+};
+
+const handleDeleteInsurance = async (rowId) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this insurance?");
+  if (!confirmDelete) return;
+
+  try {
+    await deleteInsurance(rowId).unwrap();
+    toast.success("Insurance deleted successfully ✅");
+    await refetch();
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to delete insurance ❌");
+  }
+};
+
+const handleDeleteCondition = async (rowId) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this condition?");
+  if (!confirmDelete) return;
+
+  try {
+    await deleteCondition(rowId).unwrap();
+    toast.success("Condition deleted successfully ✅");
+    await refetch();
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to delete condition ❌");
+  }
+};
+const handleDeleteInstruction = async (rowId) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this instruction?");
+  if (!confirmDelete) return;
+
+  try {
+    await deleteCondition(rowId).unwrap(); // 🔥 FIX: was deleteCondition ❌
+    toast.success("Instruction deleted successfully ✅");
+    await refetch();
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to delete instruction ❌");
+  }
+};
+const handleDeleteVetDetail = async (rowId) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this vet detail?");
+  if (!confirmDelete) return;
+
+  try {
+    await deleteInsurance(rowId).unwrap();
+    toast.success("Vet detail deleted successfully ✅");
+    await refetch();
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to delete vet detail ❌");
+  }
+};
+  // const handleDeleteAllergy = async (rowId) => { try { await deleteAllergy(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
+  // const handleDeleteMedication = async (rowId) => { try { await deleteMedication(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
+  // const handleDeleteInsurance = async (rowId) => { try { await deleteInsurance(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
+  // const handleDeleteCondition = async (rowId) => { try { await deleteCondition(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
 
 
   // MEDICATION
@@ -684,7 +796,7 @@ export default function EditProfile() {
     return `${years} years, ${months} months, ${days} days`;
   };
   const capitalize = (str) =>
-  str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+    str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
   // const hasHealth = false;
   return (
     <>
@@ -756,7 +868,7 @@ export default function EditProfile() {
                     src={
                       selectedImage
                         ? URL.createObjectURL(selectedImage)   // ✅ preview
-                        : `http://localhost:4000/${individualProfile?.image}`
+                        : `http://localhost:4000/uploads/${individualProfile?.image}`
 
                     }
                     alt="profile"
@@ -795,7 +907,7 @@ export default function EditProfile() {
                   </div>
                   <h4 className="mt-3">{individualProfile?.name}</h4>
 
-                  {individualProfile?.profile !=="OTHER" && (
+                  {individualProfile?.profile !== "OTHER" && (
                     <p>
                       Your age: {getAge(individualProfile?.dob)}
                       {capitalize(individualProfile?.city)}
@@ -855,6 +967,18 @@ export default function EditProfile() {
 
               {/* RIGHT PROFILE */}
               <div className="col-lg-8">
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "10px" }}>
+                  <button
+                    className="btn"
+                    onClick={()=>handleUpdateViewStatus(individualProfile?.id)}
+                    style={{
+                      backgroundColor:individualProfile?.status==="0" ? "red" : "green",
+                      color: "#fff"
+                    }}
+                  >
+                    {individualProfile?.status==="0" ? "Hide Data" : "View Data"}
+                  </button>
+                </div>
 
                 {/* ================= PERSONAL ================= */}
                 <div className="personaledit p-3 mb-4" style={{ border: "1px solid #eee", borderRadius: "10px" }}>

@@ -1,7 +1,7 @@
 import db from "../config/db.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-
+ const safe= (val) => val ?? "";
 // Add User
 // Get Users
 
@@ -233,5 +233,24 @@ const logoutUser = async (req, res,next) => {
 //ADMIN
 
 
-
-export {registerUser,loginUser,logoutUser };
+const addContactUs=async(req,res,next)=>{
+  let connection;
+  try{
+    const {name,email,ph,message}=req.body;
+    if(!name) return res.status(400).json({ success: false, message: "name required" });
+    if(!email) return res.status(400).json({ success: false, message: "email required" });
+   
+    connection=await db.getConnection();
+    await connection.beginTransaction();
+    const [results]=await db.query(`INSERT INTO contact (name,email,ph,comment)VALUES(?,?,?,?)`,
+      [safe(name),safe(email),safe(ph),safe(message)]);
+    await connection.commit();
+    return res.status(200).json({ success: true, message: "Contact us added",id:results.insertId });
+  }
+  catch(err){
+    return res.status(500).json({ success: false, error: err.message });
+  }finally{
+    if(connection)connection.release();
+  }
+}
+export {registerUser,loginUser,logoutUser,addContactUs };

@@ -1459,7 +1459,172 @@ const [infoRows] = await connection.query(
     if (connection) connection.release();
   }
 };
+const getIndividualProfileByTagId = async (req, res) => {
+  let connection;
+  try {
+    connection = await db.getConnection();
+    const { tagId } = req.params;
 
+    const [information]= await connection.query(
+      `SELECT id FROM information WHERE card_id = ?`,
+      [tagId]
+    );
+    const { id } = information[0];
+
+    // ── 1. Main profile info ────────────────────────────────────────────────
+    // const [infoRows] = await connection.query(
+    //   `SELECT i.*,DATE_FORMAT(i.date, '%Y-%m-%d') AS card_issue_date FROM information i WHERE i.id = ?`,
+    //   [id]
+    // );
+const [infoRows] = await connection.query(
+  `SELECT 
+    i.id,
+    i.image,
+    i.name,
+    i.phone,
+    i.email,
+    DATE_FORMAT(i.dob, '%Y-%m-%d') AS dob,
+    i.gender,
+    i.hair_color,
+    i.eye_color,
+    i.height,
+    i.weight,
+    i.blood_group,
+    i.identity,
+    i.address,
+    i.city,
+    i.state,
+    i.pin,
+    i.card_id,
+    DATE_FORMAT(i.date, '%Y-%m-%d') AS card_issue_date,
+    i.status2,
+    i.register_id,
+    i.status,
+    i.profile,
+    q.link   -- 👈 ADD THIS
+  FROM information i
+  LEFT JOIN new_qr q ON q.code = i.card_id
+  WHERE i.id = ?`,
+  [id]
+);
+
+    if (!infoRows.length) {
+      return res.status(404).json({ success: false, message: "Profile not found" });
+    }
+
+    const data = infoRows[0];
+    const isOther = data.profile === "OTHER";
+    console.log("Profile type:", data.profile);
+    // ── 2. Emergency Contacts (ALWAYS FETCH) ────────────────────────────────
+    const [emergencyRows] = await connection.query(
+      `SELECT 
+         e.id,
+         e.name,
+         e.relation,
+         e.mobile,
+         e.email,
+         e.status,
+         e.status2
+       FROM emergency_contact e
+       WHERE e.information_id = ?
+       ORDER BY e.id DESC`,
+      [id]
+    );
+
+    // ── 3. Conditional Fetch (ONLY if not OTHER) ────────────────────────────
+    let allergyRows = [];
+    let medicationRows = [];
+    let insuranceRows = [];
+    let conditionRows = [];
+
+    if (!isOther) {
+      // run in parallel 🚀
+      const [
+        [allergy],
+        [medication],
+        [insurance],
+        [condition]
+      ] = await Promise.all([
+        connection.query(
+          `SELECT 
+             a.id,
+             a.name  AS allergy_name,
+             a.note  AS allergy_notes,
+             a.status
+           FROM allergies a
+           WHERE a.information_id = ?
+           ORDER BY a.id DESC`,
+          [id]
+        ),
+        connection.query(
+          `SELECT 
+             m.id,
+             m.name           AS medicine_name,
+             m.notes          AS medicine_notes,
+             m.dosage,
+             m.dosage_unit,
+             m.frequency,
+             m.frequency_time,
+             m.status
+           FROM medicine m
+           WHERE m.information_id = ?
+           ORDER BY m.id DESC`,
+          [id]
+        ),
+        connection.query(
+          `SELECT 
+             h.id,
+             h.name  AS insurance_name,
+             h.note  AS insurance_notes,
+             h.phone AS insurance_phone,
+             h.status
+           FROM health_insurance h
+           WHERE h.information_id = ?
+           ORDER BY h.id DESC`,
+          [id]
+        ),
+        connection.query(
+          `SELECT 
+             v.id,
+             v.name  AS condition_name,
+             v.note  AS condition_notes,
+             v.status
+           FROM vital_medical v
+           WHERE v.information_id = ?
+           ORDER BY v.id DESC`,
+          [id]
+        )
+      ]);
+
+      allergyRows = allergy;
+      medicationRows = medication;
+      insuranceRows = insurance;
+      conditionRows = condition;
+    }
+
+    // ── 4. Build response ───────────────────────────────────────────────────
+    const response = {
+      ...data,
+
+      // only filled if not OTHER
+      allergy: allergyRows,
+      medication: medicationRows,
+      insurance: insuranceRows,
+      condition: conditionRows,
+
+      // always present
+      emergency_contact: emergencyRows,
+    };
+
+    return res.status(200).json({ data: response });
+
+  } catch (err) {
+    console.error("Get Profile Error:", err);
+    return res.status(500).json({ error: err.message });
+  } finally {
+    if (connection) connection.release();
+  }
+};
 const getIndividualProfileByQRCode = async (req, res) => {
   let connection;
   try {
@@ -1678,7 +1843,7 @@ const unlinkProductFromQR = async (req, res) => {
 
     // ✅ update information
     const [updateInformation] = await connection.query(
-      `UPDATE information SET card_id = NULL, date = NULL WHERE id = ?`,
+      `UPDATE information SET card_id = 0, date = NULL WHERE id = ?`,
       [id]
     );
 
@@ -1866,11 +2031,71 @@ const unlinkProductFromQR = async (req, res) => {
 //     if (connection) connection.release();
 //   }
 // };
+
+
+const updateViewOrHideData = async (req, res) => {
+  let connection;
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID is required",
+      });
+    }
+
+    connection = await db.getConnection();
+
+    // 🔥 1. Get current status from information table
+    const [rows] = await connection.query(
+      `SELECT status FROM information WHERE id = ?`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Record not found",
+      });
+    }
+
+    const currentStatus = rows[0].status;
+    console.log("currentStatus:", currentStatus);
+
+    // 🔁 2. Toggle status
+    const newStatus = currentStatus == 1 ? 0 : 1;
+
+    // 🔥 3. Update
+    await connection.query(
+      `UPDATE information SET status = ? WHERE id = ?`,
+      [newStatus, id]
+    );
+
+    return res.json({
+      success: true,
+      message: `Status updated to ${newStatus === 1 ? "Visible" : "Hidden"} ✅`,
+      status: newStatus,
+    });
+
+  } catch (err) {
+    console.error("updateViewOrHideData error:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
 export { createProfile, editProfile,editProfileImage, deleteIndividualProfile, editAddress, getAllProfilesByUser, getIndividualProfileById
   , addCondition, editCondition, deleteCondition, addAllergy, editAllergy, deleteAllergy
   , addInsurance, editInsurance, deleteInsurance, addMedication, editMedication, deleteMedication
   , addEmergencyContact, editEmergencyContact, deleteEmergencyContact, linkProductToQR,unlinkProductFromQR,
-   getIndividualProfileByQRCode
+   getIndividualProfileByQRCode,getIndividualProfileByTagId, updateViewOrHideData
  };
 //  const getIndividualProfileById = async (req, res) => {
 //   let connection;

@@ -1,9 +1,28 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import "./Home.css";
+import { toast } from "react-toastify";
+import { useState } from "react";
+import { useGetAllCustomerSayQuery, useGetAllSliderImagesQuery, useGetAllTagTextQuery, useGetAllWorks2Query, useGetAllWorksQuery } from "../../redux/api/homeWebsiteApi";
 
 export default function Home() {
+
+  const navigate = useNavigate();
+  const[tagId, setTagId] = useState("");
+
+  const { data: tagTextData } = useGetAllTagTextQuery();
+const { data: worksData } = useGetAllWorksQuery();
+const { data: works2Data } = useGetAllWorks2Query();
+const { data: customerSayData } = useGetAllCustomerSayQuery();
+const { data: sliderData } = useGetAllSliderImagesQuery();
+  const handleViewProfileByTagId = () => {
+    if(!tagId){
+      toast.error("Please enter a tag id");
+      return;
+    }
+    navigate(`/profile-details-tag/${tagId}`);
+  };
     return (
         <>
             {/* <!-- ##### Hero Area Start ##### --> */}
@@ -21,8 +40,8 @@ export default function Home() {
     className="hero-slideshow"
   >
 
-    {/* Slide 1 */}
-    <SwiperSlide>
+    
+    {/* <SwiperSlide>
       <div className="single-slide bg-img" style={{ minHeight: "600px" }}>
         
         <div
@@ -52,7 +71,7 @@ export default function Home() {
       </div>
     </SwiperSlide>
 
-    {/* Slide 2 */}
+   
     <SwiperSlide>
       <div className="single-slide bg-img" style={{ minHeight: "600px" }}>
         
@@ -81,10 +100,75 @@ export default function Home() {
         </div>
 
       </div>
-    </SwiperSlide>
+    </SwiperSlide> */}
+
+    {sliderData?.data?.map((item, index) => (
+        <SwiperSlide key={index}>
+          <div className="single-slide bg-img" style={{ minHeight: "600px" }}>
+            
+            <div
+              className="slide-bg-img bg-img bg-overlay"
+              style={{
+                  backgroundImage: `url(http://localhost:4000/uploads/${item.image})`,
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+              }}
+            ></div>
+
+            <div className="container h-100">
+              <div className="row h-100 align-items-center justify-content-center">
+                <div className="col-12 col-lg-9">
+                  <div className="welcome-text text-center">
+                    <h2>FIX IT <span>OR</span> SEDATE IT</h2>
+                    <p>
+                      In case of an emergency situation tagway provides important
+                      information through QR scanning to save as many lives or products as possible.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </SwiperSlide>
+      ))}
 
   </Swiper>
 </div>
+<section className="login-futuristic">
+  <div className="container">
+
+    <div className="login-glass">
+
+      {/* <!-- LEFT --> */}
+      <div className="login-text">
+        <h2>FIRST LOGIN</h2>
+        <p>Scan. Identify. Save Lives.</p>
+      </div>
+
+      {/* <!-- RIGHT --> */}
+      <form className="login-form-future">
+
+        <div className="input-group">
+          <i style={{marginTop:"14px"}}
+          className="fa fa-id-card"></i>
+          <input 
+          onChange={(e)=>setTagId(e.target.value)}
+          type="text" placeholder="Enter Your TAG ID" required/>
+        </div>
+
+        <button onClick={handleViewProfileByTagId}
+         type="button">
+          VIEW DATA <i className="fa fa-arrow-right"></i>
+        </button>
+
+      </form>
+
+    </div>
+
+  </div>
+</section>
             {/* <!-- ##### Hero Area End ##### --> */}
 
              {/* <!-- ##### Features Area Start ###### --> */}
@@ -139,8 +223,8 @@ export default function Home() {
     {/* <!-- Cards --> */}
     <div className="row">
 
-      {/* <!-- Card 1 --> */}
-      <div className="col-md-4">
+     
+      {/* <div className="col-md-4">
         <div className="feature-card">
           <div className="icon">⚡</div>
           <h5>ONE STEP PROCESS</h5>
@@ -148,7 +232,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* <!-- Card 2 --> */}
+      
       <div className="col-md-4">
         <div className="feature-card">
           <div className="icon">👤</div>
@@ -157,14 +241,24 @@ export default function Home() {
         </div>
       </div>
 
-      {/* <!-- Card 3 --> */}
+      
       <div className="col-md-4">
         <div className="feature-card">
           <div className="icon">🔒</div>
           <h5>TRUSTED & SECURE</h5>
           <p>In this life saving application you can store all of your medical history, medication, doctor and insurance details.</p>
         </div>
+      </div> */}
+      {tagTextData?.data?.map((item) => (
+        <div key={item?.id}
+        className="col-md-4">
+        <div className="feature-card">
+          {/* <div className="icon">{item.icon}</div> */}
+          <h5>{item?.title}</h5>
+          <p>{item?.text}</p>
+        </div>
       </div>
+      ))}
 
     </div>
 
@@ -414,17 +508,25 @@ export default function Home() {
                 Easy to Use – Easy to Edit – Easy to Access – Easy to Find
               </h5>
 
-              <p style={{ marginTop: "15px" }}>
+              {/* <p style={{ marginTop: "15px" }}>
                 TAGWAY is a user friendly and helpful technology through QR scan
                 you will get faster connect to get important information within a
                 few seconds.
-              </p>
+              </p> */}
+              {worksData?.data?.map((work, index) => {
+                return (
+                  <p key={index}
+                  style={{ marginTop: "15px" }}>
+                    {work?.text}
+                  </p>
+                );
+              })}
             </div>
 
             {/* Points */}
             <div className="row">
 
-              <div className="col-md-6 mb-3">
+              {/* <div className="col-md-6 mb-3">
                 <div className="single-service-area d-flex align-items-start">
                   <div
                     className="icon mr-3"
@@ -480,7 +582,26 @@ export default function Home() {
                     <p>Easy to find your information.</p>
                   </div>
                 </div>
-              </div>
+              </div> */}
+
+              {works2Data?.data?.map((work2) => {
+                return (
+                  <div key={work2?.id}
+                  className="col-md-6 mb-3">
+                    <div className="single-service-area d-flex align-items-start">
+                      <div
+                        className="icon mr-3"
+                        style={{ color: "limegreen" }}
+                      >
+                        <i className="fa fa-check-circle"></i>
+                      </div>
+                      <div className="text">
+                        <p>{work2?.text}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
 
             </div>
 
@@ -809,7 +930,7 @@ export default function Home() {
             >
 
               {/* Single */}
-              <SwiperSlide>
+              {/* <SwiperSlide>
                 <div className="single-testimonial-area text-center px-3">
                   <div
                     className="p-4"
@@ -830,7 +951,7 @@ export default function Home() {
                 </div>
               </SwiperSlide>
 
-              {/* Single */}
+          
               <SwiperSlide>
                 <div className="single-testimonial-area text-center px-3">
                   <div
@@ -851,7 +972,7 @@ export default function Home() {
                 </div>
               </SwiperSlide>
 
-              {/* Single */}
+             
               <SwiperSlide>
                 <div className="single-testimonial-area text-center px-3">
                   <div
@@ -870,7 +991,25 @@ export default function Home() {
                     <span style={{ color: "red" }}>User</span>
                   </div>
                 </div>
-              </SwiperSlide>
+              </SwiperSlide> */}
+              {customerSayData?.data?.map((item, index) => (
+                <SwiperSlide key={index}>
+                  <div className="single-testimonial-area text-center px-3">
+                    <div
+                      className="p-4"
+                      style={{ border: "1px solid #eee", borderRadius: "10px" }}
+                    >
+                      <i
+                        className="fa fa-quote-left mb-3"
+                        style={{ color: "limegreen", fontSize: "22px" }}
+                      ></i>
+                      <p>{item?.text}</p>
+                      <h5 className="mt-3 mb-0">{item?.title}</h5>
+                      <span style={{ color: "red" }}>{item?.post}</span>
+                    </div>
+                  </div>
+                </SwiperSlide>
+              ))}
 
             </Swiper>
 

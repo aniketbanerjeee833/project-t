@@ -14,13 +14,13 @@ const router = express.Router();
 const productUpload = createUploader("admin/products");
 // ✅ Route
 router.post("/add",userAuth,adminAuth,productUpload.single("image"),addProduct);
-router.get("/all-products",userAuth,adminAuth,getAllProducts);
+router.get("/all-products",getAllProducts);
 router.delete("/delete/:id",userAuth,adminAuth,deleteProduct);
 router.put("/edit/:id",userAuth,adminAuth, productUpload.single("image"),editProduct);
 
 router.post("/discount",userAuth,adminAuth,addDiscount);
 router.delete("/delete/discount/:id",userAuth,adminAuth,deleteDiscount);
-router.get("/all-discounts",userAuth,adminAuth,getAllDiscounts);
+router.get("/all-discounts",getAllDiscounts);
 
-router.get("/all-shipping-prices",userAuth,adminAuth,getAllShippingPrices);
+router.get("/all-shipping-prices",getAllShippingPrices);
 export default router;

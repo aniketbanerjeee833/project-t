@@ -10,6 +10,8 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 
 
+
+
 export const profileApi = createApi({
   reducerPath: "profileApi",
   baseQuery: fetchBaseQuery({
@@ -66,6 +68,15 @@ export const profileApi = createApi({
       }),
       invalidatesTags: ["Profile"],
     }),
+
+    updateViewOrHideData: builder.mutation({
+      query: (id) => ({
+        url: `profile/update-view-status/${id}`,
+        method: "PATCH"
+      
+      }),
+      invalidatesTags: ["Profile"],
+    }),
     editAddress: builder.mutation({
       query: ({ id, ...body }) => ({
         url: `profile/address/edit/${id}`,
@@ -85,7 +96,10 @@ export const profileApi = createApi({
       query: (id) => `profile/profile/${id}`,
       providesTags: ["Profile"],
     }),
-
+    getIndividualProfileByTagId: builder.query({
+      query: (tagId) => `profile/profile-by-tag-id/${tagId}`,
+      providesTags: ["Profile"],
+    }),
 
     addEmergencyContact: builder.mutation({
       query: (body) => ({
@@ -287,6 +301,8 @@ export const {
   useEditAddressMutation,
   useGetAllProfilesByUserQuery,
   useGetIndividualProfileByIdQuery,
+  useGetIndividualProfileByTagIdQuery,
+  useUpdateViewOrHideDataMutation,
 
 
   useAddEmergencyContactMutation,

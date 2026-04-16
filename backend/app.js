@@ -5,6 +5,9 @@
  import qrRoutes from "./routes/admin/qrRoutes.js"
   import profileRoutes from "./routes/profileRoutes.js"
   import productRoutes from "./routes/admin/productRoutes.js"
+  import shopRoutes from "./routes/shopRoutes.js"
+  import shippingAndPurchaseRoutes from "./routes/admin/shippingAndPurchaseRoutes.js"
+  import homeRoutes from "./routes/admin/homeRoutes.js"
 // import dashboardRoutes from "./routes/dashboardRoutes.js";
 // import partyRoutes from "./routes/partyRoutes.js";
 // import itemRoutes from "./routes/itemRoutes.js";
@@ -151,17 +154,21 @@ app.use(cors({
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use("/img/user", express.static(path.join(__dirname, "uploads/user")));
-app.use("/qr", express.static(path.join(process.cwd(), "uploads/admin/qr")));
-app.use("/img/admin/products", express.static(path.join(__dirname, "uploads/admin/products")));
-// app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+//  app.use("/img/user", express.static(path.join(__dirname, "uploads/user")));
+//  app.use("/qr", express.static(path.join(process.cwd(), "uploads/admin/qr")));
+//  app.use("/admin/products", express.static(path.join(__dirname, "uploads/admin/products")));
+ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // app.use("/public", express.static(path.join(process.cwd(), "public")));
 
 
  app.use("/api/user",userRoutes)
+  app.use("/api/user/shop",shopRoutes)
  app.use("/api/admin",adminRoutes)
+ app.use("/api",homeRoutes)
  app.use("/api/admin/qr",qrRoutes)
  app.use("/api/admin/product",productRoutes)
+ app.use("/api/admin/shippingAndPurchase",shippingAndPurchaseRoutes)
+
  app.use("/api/user/profile",profileRoutes)
 
 // app.use("/api/dashboard", dashboardRoutes);

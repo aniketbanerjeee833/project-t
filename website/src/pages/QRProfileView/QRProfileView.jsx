@@ -101,7 +101,7 @@ export default function QRProfileView() {
             <div className="col-lg-4 mb-4">
               <div className="editimg text-center p-4" style={{ border: "1px solid #eee", borderRadius: "10px" }}>
                 <img
-                  src={`http://localhost:4000/${individualProfile?.image}`}
+                  src={`http://localhost:4000/uploads/${individualProfile?.image}`}
                   alt="profile"
                   style={{ width: "120px", height: "120px", borderRadius: "50%", objectFit: "cover" }}
                 //   onError={(e) => { e.target.src = "/assets/img/profile.jpg"; }}

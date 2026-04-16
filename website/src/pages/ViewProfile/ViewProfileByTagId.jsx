@@ -1,18 +1,18 @@
 import { useParams } from "react-router-dom";
-import { useGetIndividualProfileByIdQuery } from "../../redux/api/profileApi";
+import {  useGetIndividualProfileByTagIdQuery } from "../../redux/api/profileApi";
 
-export default function ViewProfile() {
+export default function ViewProfileByTagId() {
 
   // const [searchParams] = useSearchParams();
   // const encodedId = searchParams.get("profile_id");
-    const { encodedId } = useParams();
-    console.log("Encoded QR code from URL:", encodedId);
+    const { tagId } = useParams();
+  
   
     // decode base64 → 6-digit code
     //const code = encodedCode ? atob(encodedCode) : null;
-  const id = encodedId ? atob(encodedId) : null;
-    console.log("Decoded ID:", id);
-  const { data: profile } = useGetIndividualProfileByIdQuery(id, { skip: !id });
+//   const id = encodedId ? atob(encodedId) : null;
+    console.log(" ID:",tagId );
+  const { data: profile } = useGetIndividualProfileByTagIdQuery(tagId, { skip: !tagId });
 
   const individualProfile = profile?.data;
   console.log("Individual Profile:", individualProfile);

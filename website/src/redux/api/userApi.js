@@ -3,6 +3,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 
 
+
 export const userApi = createApi({
   reducerPath: "userApi",
   baseQuery: fetchBaseQuery({
@@ -42,6 +43,14 @@ export const userApi = createApi({
       }),
       invalidatesTags: ["User"],
     }),
+    addContactUs: builder.mutation({
+      query: (body) => ({
+        url: `user/contact-us`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["User"],
+    }),
 
 
   
@@ -57,4 +66,5 @@ export const {
  useRegisterUserMutation,
   useLoginUserMutation,
   useLogoutUserMutation,
+  useAddContactUsMutation
 } = userApi;

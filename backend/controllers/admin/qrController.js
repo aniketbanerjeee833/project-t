@@ -78,7 +78,8 @@ const createQR = async (req, res) => {
     });
 
     // ✅ 6. store public path (IMPORTANT FIX)
-    const imageCol = `qr/${fileName}`;
+    // const imageCol = `qr/${fileName}`;
+    const imageCol = `admin/qr/${fileName}`;
     const today = new Date().toISOString().split("T")[0];
 
     // ✅ 7. insert into DB
@@ -112,7 +113,7 @@ const createQR = async (req, res) => {
 
         await QRCode.toFile(newFilePath, newLink);
 
-        const newImageCol = `qr/${newFileName}`;
+        const newImageCol = `admin/qr/${newFileName}`;
 
         // [result] = await connection.query(
         //   `INSERT INTO new_qr 

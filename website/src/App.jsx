@@ -146,6 +146,7 @@ const MyProfile = lazy(() => import("./pages/MyProfile/MyProfile.jsx"));
 const Profile = lazy(() => import("./pages/Profile/Profile.jsx"));
 const EditProfile = lazy(() => import("./pages/EditProfile/EditProfile.jsx"));
 const ViewProfile = lazy(() => import("./pages/ViewProfile/ViewProfile.jsx"));
+const ViewProfileByTagId = lazy(() => import("./pages/ViewProfile/ViewProfileByTagId.jsx"));
 const QRProfileView = lazy(() => import("./pages/QRProfileView/QRProfileView.jsx"));
 function App() {
   return (
@@ -164,11 +165,12 @@ function App() {
             <Route path="/forgot" element={<Forgot />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/buy" element={<Buy />} />
-            <Route path="/shipping" element={<Shipping />} />
+            <Route path="/shipping/:id/:id2" element={<Shipping />} />
             <Route path="/my-profile" element={<MyProfile />} />
             <Route path="/profile" element={<Profile/>} />
             <Route path="/edit-profile/:id" element={<EditProfile/>} />
             <Route path="/profile/:encodedId" element={<ViewProfile/>} />
+             <Route path="/profile-details-tag/:tagId" element={<ViewProfileByTagId/>} />
             <Route path="/profile-details-qr/:encodedCode" element={<QRProfileView />} />
             {/* <Route path="*" element={<h1>404 Not Found</h1>} /> Catch-all route for unmatched paths */}
 

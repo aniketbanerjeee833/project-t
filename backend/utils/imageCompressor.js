@@ -14,16 +14,53 @@
 // };
 
 // module.exports = compressImage;
+// import sharp from "sharp";
+// import fs from "fs";
+// import path from "path";
+
+// const compressImage = async (filePath) => {
+//   const folder = filePath.includes("admin") ? "admin" : "user";
+
+//   const filename = `${Date.now()}-${Math.floor(Math.random() * 9999)}.jpg`;
+
+//   const outputPath = `uploads/${folder}/${filename}`;
+
+//   await sharp(filePath)
+//     .jpeg({ quality: 30 })
+//     .toFile(outputPath);
+
+//   fs.unlinkSync(filePath);
+
+//   // ✅ return clean DB path
+//   // return `img/${folder}/${filename}`;
+//   return `${folder}/${filename}`;
+// };
+
+// export default compressImage;
 import sharp from "sharp";
 import fs from "fs";
 import path from "path";
 
-const compressImage = async (filePath) => {
-  const folder = filePath.includes("admin") ? "admin" : "user";
+const compressImage = async (filePath, customFolder = null) => {
+  // ✅ decide folder
+  let folder;
+
+  if (customFolder) {
+    folder = customFolder; // e.g. "admin/qr"
+  } else {
+    folder = filePath.includes("admin") ? "admin" : "user";
+  }
 
   const filename = `${Date.now()}-${Math.floor(Math.random() * 9999)}.jpg`;
 
-  const outputPath = `uploads/${folder}/${filename}`;
+  const outputDir = path.join("uploads", folder);
+
+  // create folder if not exists
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const outputPath = path.join(outputDir, filename);
 
   await sharp(filePath)
     .jpeg({ quality: 30 })
@@ -31,8 +68,8 @@ const compressImage = async (filePath) => {
 
   fs.unlinkSync(filePath);
 
-  // ✅ return clean DB path
-  return `img/${folder}/${filename}`;
+  // ✅ return DB path
+  return `${folder}/${filename}`;
 };
 
 export default compressImage;
