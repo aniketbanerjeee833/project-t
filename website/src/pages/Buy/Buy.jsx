@@ -24,7 +24,7 @@
 //     </section>
 //     {/* <!-- ##### Breadcrumb Area End ##### --> */}
 
-  
+
 //  {/* <!-- ##### shop Area Start ###### --> */}
 //   <div className="shipping-area section-padding-100">
 //   <div className="container">
@@ -84,9 +84,9 @@
 //               </div>
 
 //             </div>
-          
+
 //             <button className="probtn"
-           
+
 //             >Continue to Shipping</button>
 
 //           </form>
@@ -95,7 +95,7 @@
 //       </div>
 
 //       {/* <!-- RIGHT SIDE --> */}
-      
+
 
 //     </div>
 //   </div>
@@ -118,18 +118,34 @@ export default function Buy() {
     address: "", apartment: "", city: "", state: "", pin: "",
   });
 
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  // const handleChange = (e) => {
+  //   setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  // };
+const handleChange = (e) => {
+  let { name, value } = e.target;
 
+  if (name === "phone") {
+    // allow only digits
+    value = value.replace(/\D/g, "");
+
+    // limit to 10 digits
+    if (value.length > 10) return;
+  }
+  if(name==="pin"){
+    value=value.replace(/\D/g, "");
+    if(value.length>6) return;
+  }
+
+  setForm((prev) => ({ ...prev, [name]: value }));
+};
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const res = await addShipping(form).unwrap();
       if (res.success) {
         // encode exactly like the PHP pattern: id=base64(in_id) & id2=base64(shipping_id)
-        const encodedInId  = btoa(String(res.data.in_id));   // id param
-        const encodedId    = btoa(String(res.data.id));       // id2 param
+        const encodedInId = btoa(String(res.data.in_id));   // id param
+        const encodedId = btoa(String(res.data.id));       // id2 param
         toast.success("Shipping saved!");
         // navigate(`/shipping?id=${encodedInId}&id2=${encodedId}`);
         navigate(`/shipping/${encodedInId}/${encodedId}`);
@@ -169,9 +185,22 @@ export default function Buy() {
                         type="text" placeholder="Full Name" required />
                     </div>
 
-                    <div className="col-md-6">
+                    {/* <div className="col-md-6">
                       <input name="phone" value={form.phone} onChange={handleChange}
                         type="tel" placeholder="Phone Number" required />
+                    </div> */}
+                    <div className="col-md-6">
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={form.phone} onChange={handleChange}
+                        maxLength={10}
+                        inputMode="numeric"
+                        pattern="[6-9][0-9]{9}"
+                       placeholder="Phone Number" required 
+                      />
+
+                      
                     </div>
 
                     <div className="col-md-12">
@@ -200,8 +229,18 @@ export default function Buy() {
                     </div>
 
                     <div className="col-md-6">
-                      <input name="pin" value={form.pin} onChange={handleChange}
-                        type="text" placeholder="PIN Code" required />
+                       <input
+                        type="tel"
+                        name="pin"
+                        value={form.pin} onChange={handleChange}
+                        maxLength={6}
+                        inputMode="numeric"
+                       
+                       placeholder="PIN Code" required 
+                      />
+
+                      {/* <input name="pin" value={form.pin} onChange={handleChange}
+                        type="text" placeholder="PIN Code" required /> */}
                     </div>
 
                   </div>

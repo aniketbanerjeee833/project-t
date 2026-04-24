@@ -18,6 +18,7 @@ export default function QRProfileView() {
   const { data, isLoading, isError } = useGetIndividualProfileByQRCodeQuery(code, { skip: !code });
 
   const individualProfile = data?.data;
+  console.log(data)
   const[sendLocationToMail,{isLoading:sendLocationToMailLoading}]=useSendLocationToMailMutation();
   const formatDOB = (dob) => {
     if (!dob) return "-";
@@ -49,8 +50,10 @@ export default function QRProfileView() {
   if (isError || !individualProfile) {
     return (
       <div className="container mt-5 text-center">
-        <h3 className="text-danger">Profile not found</h3>
-        <p className="text-muted">This QR code is not linked to any profile yet.</p>
+        <h3 style={{color:"black"}}
+        className="text-danger">Profile not found</h3>
+        <p style={{color:"black"}}
+        className="text-muted">This QR code is not linked to any profile yet Or Qr Code has expired.</p>
       </div>
     );
   }

@@ -40,7 +40,7 @@ import path from "path";
 // import { Server } from "socket.io";   // <-- MUST COME FROM socket.io
 
  import { fileURLToPath } from "url";
- import clearExpiredQr from "./utils/qrExpiryCron.js";
+//  import clearExpiredQr from "./utils/qrExpiryCron.js";
 
 
 // import dailyStockCarryForward from "./cron/dailyStockCarryForward.js";
@@ -267,7 +267,7 @@ const PORT = process.env.PORT || 4000;
 // clearExpiredSessions();
 // clearExpiredLoginAttempts();
 // dailyStockCarryForward();
- clearExpiredQr()
+//  clearExpiredQr()
 app.listen(PORT, (err) => {
   if (err) {
     logger.error(`❌ Failed to start server on port ${PORT}`, err);

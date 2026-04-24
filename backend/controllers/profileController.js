@@ -2110,16 +2110,25 @@ const getIndividualProfileByQRCode = async (req, res) => {
 
     // 1. QR
     const [qrRows] = await connection.query(
-      "SELECT * FROM new_qr WHERE code = ?",
+      "SELECT * FROM new_qr WHERE code = ?  ",
       [code]
     );
 
     if (!qrRows.length) {
       return res.status(404).json({
         success: false,
-        message: "QR code not found",
+        message: "QR code not found ",
       });
     }
+const status = Number(qrRows[0].status);
+    if(status === 2){
+      return res.status(404).json({
+        success: false,
+        message: "QR code expired ",
+      });
+    }
+
+    
 
     const qr = qrRows[0];
 
