@@ -253,4 +253,387 @@ const addContactUs=async(req,res,next)=>{
     if(connection)connection.release();
   }
 }
-export {registerUser,loginUser,logoutUser,addContactUs };
+
+// const generateOTP = () => {
+//   return Math.floor(1000 + Math.random() * 9000).toString();
+// };
+
+// const sendOTP = async (req, res) => {
+//   let connection;
+//   try {
+//     const { mobile } = req.body;
+
+//     if (!mobile) {
+//       return res.status(400).json({ message: "Mobile number required" });
+//     }
+//      connection=await db.getConnection();
+//     await connection.beginTransaction();
+
+//     // 🔒 Rate limit (basic)
+//     // if (otpStore.has(mobile)) {
+//     //   return res.status(400).json({ message: "Please wait before requesting again" });
+//     // }
+
+//     const otp = generateOTP();
+
+//     //const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
+//     //otpStore.set(mobile, { otp, expiresAt });
+
+//     // 📩 Your SMS message
+//     const msg = `Welcome to TAGWAY. Your OTP is ${otp}. In case of emergency situation TAGWAY provides important information through QR Scanning. CLPLSE`;
+
+//     const encodedMsg = encodeURIComponent(msg);
+
+//     // 🔥 BulkSMS API URL
+//     const url = `http://sms.bulksmsind.in/v2/sendSMS?username=techsms&message=${encodedMsg}&sendername=CLPLSE&smstype=TRANS&numbers=${mobile}&apikey=YOUR_API_KEY&peid=1701161605309086220&templateid=1707177321124930407`;
+
+//     // 📡 API call
+//     // const response = await axios.post(url);
+
+//     // console.log("SMS API Response:", response.data);
+//     const response = await fetch(url, {
+//       method: "POST"
+//     });
+
+//     const data = await response.text(); // BulkSMS usually returns text
+
+//     console.log("SMS Response:", data);
+//     await connection.commit()
+//     return res.status(200).json({
+//       message: "OTP sent successfully",
+//     });
+
+//   } catch (error) {
+//     console.error("Send OTP Error:", error.message);
+
+//     return res.status(500).json({
+//       message: "Failed to send OTP",
+//     });
+//   }
+// };
+
+// const verifyOTP = async (req, res) => {
+//   let connection;
+//   try {
+//     const { mobile, otp } = req.body;
+
+//     if (!mobile || !otp) {
+//       return res.status(400).json({ message: "Mobile & OTP required" });
+//     }
+//      connection=await db.getConnection();
+//     await connection.beginTransaction();
+//     //const record = otpStore.get(mobile);
+
+//     // if (!record) {
+//     //   return res.status(400).json({ message: "OTP not found or expired" });
+//     // }
+
+//     // check expiry
+//     if (Date.now() > record.expiresAt) {
+//       //otpStore.delete(mobile);
+//       return res.status(400).json({ message: "OTP expired" });
+//     }
+
+//     if (record.otp !== otp) {
+//       return res.status(400).json({ message: "Invalid OTP" });
+//     }
+
+//     // ✅ success → delete OTP
+//     //otpStore.delete(mobile);
+//     await connection.commit()
+//     return res.status(200).json({
+//       message: "OTP verified successfully",
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Server error" });
+//   }finally{
+//     if(connection)connection.release();
+//   }
+// };
+
+const sendOTP = async (req, res) => {
+  let connection;
+  try {
+    const { mobile, type } = req.body;
+
+    if (!mobile || !type) {
+      return res.status(400).json({ message: "Mobile and type required" });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    // 🔍 Check user exists
+    const [existingUser] = await connection.query(
+      "SELECT id FROM register WHERE mobile = ?",
+      [mobile]
+    );
+
+    // 🧠 Logic based on type
+    if (type === "register" && existingUser.length > 0) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "User already exists, please login",
+      });
+    }
+
+    if (type === "forgot" && existingUser.length === 0) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "User does not exist, please register",
+      });
+    }
+
+    // 🔢 Generate OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // 🔁 Insert or update OTP
+    const [existingOtp] = await connection.query(
+      "SELECT * FROM otp_verification WHERE mobile = ?",
+      [mobile]
+    );
+
+    if (existingOtp.length > 0) {
+      await connection.query(
+        "UPDATE otp_verification SET otp = ? WHERE mobile = ?",
+        [otp, mobile]
+      );
+    } else {
+      await connection.query(
+        "INSERT INTO otp_verification (mobile, otp) VALUES (?, ?)",
+        [mobile, otp]
+      );
+    }
+
+    // 📩 Send SMS
+    // const msg = `Your OTP is ${otp}`;
+    const msg = `Welcome to TAGWAY. Your OTP is ${otp}. In case of emergency situation TAGWAY provides important information through QR Scanning. CLPLSE`;
+    const encodedMsg = encodeURIComponent(msg);
+
+      const url = `http://sms.bulksmsind.in/v2/sendSMS?username=techsms&message=${encodedMsg}&sendername=CLPLSE&smstype=TRANS&numbers=${mobile}&apikey=8a8651c3-cc8e-40cd-a0d6-e841d35e1708&peid=1701161605309086220&templateid=1707177321124930407`;
+
+
+    await fetch(url, { method: "POST" });
+
+    await connection.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("Send OTP Error:", error);
+
+    return res.status(500).json({
+      message: "Failed to send OTP",
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+//  const sendOTP = async (req, res) => {
+//   let connection;
+//   try {
+//     const { mobile } = req.body;
+
+//     if (!mobile) {
+//       return res.status(400).json({ message: "Mobile number required" });
+//     }
+
+//     connection = await db.getConnection();
+//     await connection.beginTransaction();
+
+    
+  
+//    // 🔥 Check user exists
+//     const [existingUser] = await connection.query(
+//       "SELECT id FROM register WHERE mobile = ?",
+//       [mobile]
+//     );
+
+//     if (!existingUser.length) {
+//       await connection.rollback();
+//       return res.status(400).json({
+//         message: "User does not exist, please register",
+//       });
+//     }
+//     const otp = Math.floor(1000 + Math.random() * 9000).toString();
+//     // ✅ Check if OTP already exists → update
+//     const [existing] = await connection.query(
+//       "SELECT * FROM otp_verification WHERE mobile = ?",
+//       [mobile]
+//     );
+
+//     if (existing.length > 0) {
+//       await connection.query(
+//         "UPDATE otp_verification SET otp = ? WHERE mobile = ?",
+//         [otp,  mobile]
+//       );
+//     } else {
+//       await connection.query(
+//         "INSERT INTO otp_verification (mobile, otp) VALUES (?, ?)",
+//         [mobile, otp]
+//       );
+//     }
+
+//     // 📩 SMS Message
+//     const msg = `Welcome to TAGWAY. Your OTP is ${otp}. In case of emergency situation TAGWAY provides important information through QR Scanning. CLPLSE`;
+//     const encodedMsg = encodeURIComponent(msg);
+
+//     const url = `http://sms.bulksmsind.in/v2/sendSMS?username=techsms&message=${encodedMsg}&sendername=CLPLSE&smstype=TRANS&numbers=${mobile}&apikey=8a8651c3-cc8e-40cd-a0d6-e841d35e1708&peid=1701161605309086220&templateid=1707177321124930407`;
+
+//     const response = await fetch(url, { method: "POST" });
+//     const data = await response.text();
+
+//     //console.log("SMS Response:", data);
+
+//     await connection.commit();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "OTP sent successfully",
+//     });
+
+//   } catch (error) {
+//     if (connection) await connection.rollback();
+//     console.error("Send OTP Error:", error);
+
+//     return res.status(500).json({
+//       message: "Failed to send OTP",
+//     });
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
+
+const verifyOTP = async (req, res) => {
+  let connection;
+  try {
+    const { mobile, otp } = req.body;
+
+    if (!mobile || !otp) {
+      return res.status(400).json({ message: "Mobile & OTP required" });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      "SELECT * FROM otp_verification WHERE mobile = ?",
+      [mobile]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({
+        message: "OTP not found. Please request again",
+      });
+    }
+
+    const record = rows[0];
+
+ 
+   
+
+    // ❌ Wrong OTP
+    if (record.otp !== otp) {
+      return res.status(400).json({
+        message: "Invalid OTP",
+      });
+    }
+
+    // ✅ Success → delete OTP
+    await connection.query(
+      "DELETE FROM otp_verification WHERE mobile = ?",
+      [mobile]
+    );
+
+    await connection.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP verified successfully",
+    });
+
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("Verify OTP Error:", error);
+
+    return res.status(500).json({
+      message: "Server error",
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+
+const changePassword = async (req, res) => {
+  let connection;
+
+  try {
+    const { mobile,  newPassword } = req.body;
+
+    // 🔒 Basic validation
+    if (!mobile ||  !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile,  and new password are required",
+      });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    // 🔍 Check user exists
+    const [rows] = await connection.query(
+      `SELECT id, password FROM register WHERE mobile = ? LIMIT 1`,
+      [mobile]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = rows[0];
+
+    // 🔑 Verify old password
+    //const isMatch = await bcrypt.compare(oldPassword, user.password);
+
+   
+
+    // 🔐 Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // 🔄 Update password
+    await connection.query(
+      `UPDATE register SET password = ? WHERE mobile = ?`,
+      [hashedNewPassword, mobile]
+    );
+
+    await connection.commit();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+
+  } catch (err) {
+    if (connection) await connection.rollback();
+    console.error("Change Password Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+
+  } finally {
+    if (connection) connection.release();
+  }
+};
+export {registerUser,loginUser,logoutUser,addContactUs,sendOTP,verifyOTP,changePassword };

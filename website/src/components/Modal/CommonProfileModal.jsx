@@ -213,6 +213,7 @@ const CommonProfileModal = ({
                 return (
                   <input
                     key={index}
+                    
                     type={field.type || "text"}
                     className="form-control mb-2"
                     placeholder={field.placeholder}

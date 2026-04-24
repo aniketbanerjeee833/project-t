@@ -6,6 +6,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 
 
+
 export const homeWebsiteApi = createApi({
   reducerPath: "homeWebsiteApi",
   baseQuery: fetchBaseQuery({
@@ -72,7 +73,11 @@ getAllWorks2: builder.query({
             `home/slider-img?admin=false`,
         providesTags: ["Home"],
       }),
-      
+
+      getAllRegisterImage: builder.query({
+      query: () =>
+        `home/register-image`,
+    }),
   
   
 
@@ -101,6 +106,7 @@ export const {
 
  
   useGetAllSliderImagesQuery,
+  useGetAllRegisterImageQuery,
  
 
 } = homeWebsiteApi;

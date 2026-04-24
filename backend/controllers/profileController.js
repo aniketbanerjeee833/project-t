@@ -2,6 +2,7 @@ import db from "../config/db.js";
 import compressImage from "../utils/imageCompressor.js";
 import fs from "fs";
 import path from "path";
+import nodemailer from "nodemailer"
 
 import { fileURLToPath } from "url";
 
@@ -194,13 +195,21 @@ const createProfile = async (req, res) => {
       mobile,
       profile,
       register_id,
-      breed
+      breed,
+      emergency_contact_mail,
+     emergency_contact_number,
     } = req.body;
 
     if (!profile) {
       return res.status(400).json({
         success: false,
         message: "Profile type is required",
+      });
+    }
+    if(!emergency_contact_mail||!emergency_contact_number){
+      return res.status(400).json({
+        success: false,
+        message: "Emergency contact is required",
       });
     }
     
@@ -287,7 +296,7 @@ const createProfile = async (req, res) => {
       values = [
         safe(name),
         safe(email),
-        safe(dob),
+        dob || null, // ✅ THIS FIX,
         safe(gender),
         safe(city),
         safe(state),
@@ -306,7 +315,7 @@ const createProfile = async (req, res) => {
       values = [
         safe(name),
         safe(email),
-        safe(dob),
+        dob || null, // ✅ THIS FIX,
         safe(gender),
         safe(city),
         safe(state),
@@ -316,7 +325,24 @@ const createProfile = async (req, res) => {
       ];
     }
 
-    await connection.execute(query, values);
+    const[result]=await connection.execute(query, values);
+
+    const information_id = result.insertId;
+
+  
+
+     await connection.execute(
+      `INSERT INTO emergency_contact 
+      (information_id, name, relation, mobile, email, status, status2)
+      VALUES (?, ?, ?, ?, ?, 0, 0)`,
+      [
+        information_id,
+       safe(""), // or separate emergency name if you want
+      safe(""),   // relation (optional for now
+      safe(emergency_contact_number),
+      safe(emergency_contact_mail),
+      ]
+    );
     await connection.commit();
 
     return res.status(201).json({
@@ -959,23 +985,42 @@ const addEmergencyContact = async (req, res) => {
 // ── EDIT ──────────────────────────────────────────────────────────────────────
 const editEmergencyContact = async (req, res) => {
   let connection;
+
   try {
     const { id } = req.params;
-    const {  name, relation, mobile, email } = req.body;
-
-   
-
-    // ✅ Validation
-  
+    const { name, relation, mobile, email } = req.body;
 
     connection = await db.getConnection();
+    await connection.beginTransaction()
 
+    // ✅ 1. Get existing data
+    const [existing] = await connection.query(
+      `SELECT email FROM emergency_contact WHERE id=?`,
+      [id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Contact not found",
+      });
+    }
+
+    const oldEmail = existing[0].email;
+
+    // ✅ 2. Check if email changed
+    let status2Update = "";
+
+    if (email && email !== oldEmail) {
+      status2Update = ", status2=0"; // reset verification
+    }
+
+    // ✅ 3. Update query
     const [result] = await connection.query(
       `UPDATE emergency_contact 
-       SET  name=?, relation=?, mobile=?, email=? 
+       SET name=?, relation=?, mobile=?, email=? ${status2Update}
        WHERE id=?`,
       [
-        
         safe(name),
         safe(relation),
         safe(mobile),
@@ -983,20 +1028,17 @@ const editEmergencyContact = async (req, res) => {
         id,
       ]
     );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Contact not found",
-      });
-    }
-
+    await connection.commit()
     return res.json({
       success: true,
-      message: "Emergency contact updated",
+      message: email !== oldEmail
+        ? "Email changed, verification required again 🔁"
+        : "Emergency contact updated",
     });
 
   } catch (err) {
+    console.error(err);
+     if (connection) await connection.rollback();
     return res.status(500).json({
       success: false,
       error: err.message,
@@ -1005,6 +1047,220 @@ const editEmergencyContact = async (req, res) => {
     if (connection) connection.release();
   }
 };
+const sendOtpToVerifyEnergencyContact = async (req, res) => {
+  let connection;
+
+  try {
+    const { email } = req.body;
+    if(!email){
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction()
+
+    // ✅ Check email exists
+    const [result] = await connection.query(
+      `SELECT id FROM emergency_contact WHERE email=?`,
+      [email]
+    );
+
+    if (result.length === 0) {
+      await connection.rollback()
+      return res.status(404).json({
+        success: false,
+        message: "Contact not found",
+      });
+    }
+
+    // ✅ Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    // ✅ Save OTP
+    await connection.query(
+      `UPDATE emergency_contact SET otp=? WHERE email=?`,
+      [otp, email]
+    );
+
+    // ✅ Nodemailer transporter (TAGWAY SMTP)
+    const transporter = nodemailer.createTransport({
+      host: "tagway.co.in",
+      port: 465,
+      secure: true,
+      auth: {
+        user: "noreply@tagway.co.in",
+        pass: "Tagway@123",
+      },
+    });
+
+    // ✅ Email template (same like PHP)
+    const htmlTemplate = `
+      <table width='569' border='1' cellpadding='10' cellspacing='0' style='font-family:Arial;'>
+        <tr>
+          <td colspan='4' align="center">
+            <b>VERIFY YOUR EMAIL</b>
+          </td>
+        </tr>
+        <tr>
+          <td>OTP</td>
+          <td><strong>:</strong></td>
+          <td>${otp}</td>
+        </tr>
+      </table>
+    `;
+
+    // ✅ Send mail
+    await transporter.sendMail({
+      from: '"TAGWAY" <noreply@tagway.co.in>',
+      to: email,
+      subject: "TAGWAY OTP Verification",
+      html: htmlTemplate,
+    });
+
+    await connection.commit()
+    return res.json({
+      success: true,
+      message: "OTP sent successfully 📩",
+    });
+
+  } catch (err) {
+    console.error("MAIL ERROR:", err);
+    if (connection) await connection.rollback();
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send OTP ❌",
+      error: err.message,
+    });
+
+  } finally {
+    if (connection) connection.release();
+  }
+};
+const verifyOtpEmergencyContact = async (req, res) => {
+  let connection;
+
+  try {
+    const { email, otp } = req.body;
+    if(!email || !otp){
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction()
+
+    // ✅ Check if OTP matches
+    const [result] = await connection.query(
+      `SELECT id FROM emergency_contact WHERE email=? AND otp=?`,
+      [email, otp]
+    );
+
+    if (result.length === 0) {
+      await connection.rollback()
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP ❌",
+      });
+    }
+
+    // ✅ Update status2 = 1 (verified)
+    await connection.query(
+      `UPDATE emergency_contact SET status2='1', otp=NULL WHERE email=?`,
+      [email]
+    );
+
+    await connection.commit()
+    return res.json({
+      success: true,
+      message: "Email verified successfully ✅",
+    });
+
+  } catch (err) {
+    console.error(err);
+    if (connection) await connection.rollback();
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong ❌",
+      error: err.message,
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+// const sendOtpToVerifyEnergencyContact = async (req, res) => {
+//   let connection;
+
+//   try {
+//     const { email } = req.body;
+
+//     connection = await db.getConnection();
+
+//     // ✅ Check if email exists
+//     const [result] = await connection.query(
+//       `SELECT * FROM emergency_contact WHERE email=?`,
+//       [email]
+//     );
+
+//     if (result.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Contact not found",
+//       });
+//     }
+
+//     // ✅ Generate OTP (6 digit)
+//     const otp = Math.floor(100000 + Math.random() * 900000);
+
+//     // ✅ Save OTP in DB (add otp column if not exists)
+//     await connection.query(
+//       `UPDATE emergency_contact SET otp=? WHERE email=?`,
+//       [otp, email]
+//     );
+
+//     // ✅ Setup transporter
+//     const transporter = nodemailer.createTransport({
+//       service: "gmail",
+//       auth: {
+//         user: "your_email@gmail.com",
+//         pass: "your_app_password", // 🔥 NOT normal password
+//       },
+//     });
+
+//     // ✅ Mail options
+//     const mailOptions = {
+//       from: "your_email@gmail.com",
+//       to: email,
+//       subject: "OTP Verification",
+//       html: `
+//         <h3>Your OTP for verification</h3>
+//         <h2>${otp}</h2>
+        
+//       `,
+//     };
+
+//     // ✅ Send email
+//     await transporter.sendMail(mailOptions);
+
+//     return res.json({
+//       success: true,
+//       message: "OTP sent successfully 📩",
+//     });
+
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({
+//       success: false,
+//       error: err.message,
+//     });
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
 // ── DELETE ────────────────────────────────────────────────────────────────────
 const deleteEmergencyContact = async (req, res) => {
   let connection;
@@ -1335,7 +1591,8 @@ const [infoRows] = await connection.query(
     i.register_id,
     i.status,
     i.profile,
-    q.link   -- 👈 ADD THIS
+    q.link,
+   DATE_FORMAT(q.date3, '%Y-%m-%d') AS date3
   FROM information i
   LEFT JOIN new_qr q ON q.code = i.card_id
   WHERE i.id = ?`,
@@ -1464,6 +1721,9 @@ const getIndividualProfileByTagId = async (req, res) => {
   try {
     connection = await db.getConnection();
     const { tagId } = req.params;
+    if (!tagId) {
+      return res.status(400).json({ success: false, message: "Tag ID is required" });
+    }
 
     const [information]= await connection.query(
       `SELECT id FROM information WHERE card_id = ?`,
@@ -1625,85 +1885,122 @@ const [infoRows] = await connection.query(
     if (connection) connection.release();
   }
 };
-const getIndividualProfileByQRCode = async (req, res) => {
-  let connection;
-  try {
-    const { code } = req.params;
-    if(!code){
-      return res.status(400).json({ success: false, message: "QR code is required" });
-    }
-    connection = await db.getConnection();
 
-    // 1. find the QR row
-    const [qrRows] = await connection.query(
-      "SELECT * FROM new_qr WHERE code = ?", [code]
-    );
-    if (!qrRows.length) {
-      return res.status(404).json({ success: false, message: "QR code not found" });
-    }
+// const getIndividualProfileByQRCode = async (req, res) => {
+//   let connection;
+//   try {
+//     const { code } = req.params;
 
-    const qr = qrRows[0];
+//     if (!code) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "QR code is required",
+//       });
+//     }
 
-    // 2. find the information row linked to this QR code
-    const [infoRows] = await connection.query(
-      "SELECT * FROM information WHERE card_id = ?", [code]
-    );
-    if (!infoRows.length) {
-      return res.status(404).json({ success: false, message: "No profile linked to this QR" });
-    }
+//     connection = await db.getConnection();
 
-    const info = infoRows[0];
-    const infoId = info.id;
+//     // 🔥 1. find QR
+//     const [qrRows] = await connection.query(
+//       "SELECT * FROM new_qr WHERE code = ?",
+//       [code]
+//     );
 
-    // 3. fetch all sub-data (same as getIndividualProfileById)
-    const [allergyRows] = await connection.query(
-      `SELECT id, name AS allergy_name, note AS allergy_notes, status
-       FROM allergies WHERE information_id = ? ORDER BY id DESC`, [infoId]
-    );
+//     if (!qrRows.length) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "QR code not found",
+//       });
+//     }
 
-    const [medicationRows] = await connection.query(
-      `SELECT id, name AS medicine_name, notes AS medicine_notes,
-              dosage, dosage_unit, frequency, frequency_time, status
-       FROM medicine WHERE information_id = ? ORDER BY id DESC`, [infoId]
-    );
+//     const qr = qrRows[0];
 
-    const [insuranceRows] = await connection.query(
-      `SELECT id, name AS insurance_name, note AS insurance_notes,
-              phone AS insurance_phone, status
-       FROM health_insurance WHERE information_id = ? ORDER BY id DESC`, [infoId]
-    );
+//     // 🔥 2. find linked information (ONLY status = 0)
+//     const [infoRows] = await connection.query(
+//       "SELECT * FROM information WHERE card_id = ? AND status = 0",
+//       [code]
+//     );
 
-    const [conditionRows] = await connection.query(
-      `SELECT id, name AS condition_name, note AS condition_notes, status
-       FROM vital_medical WHERE information_id = ? ORDER BY id DESC`, [infoId]
-    );
+//     if (!infoRows.length) {
+//       return res.status(403).json({
+//         success: false,
+//         message: "This profile is not available / hidden",
+//       });
+//     }
 
-    const [emergencyRows] = await connection.query(
-      `SELECT id, name, mobile, relation, email
-       FROM emergency_contact WHERE information_id = ? ORDER BY id DESC`, [infoId]
-    );
+//     const info = infoRows[0];
+//     const infoId = info.id;
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        ...info,
-        qr,
-        allergy:           allergyRows,
-        medication:        medicationRows,
-        insurance:         insuranceRows,
-        condition:         conditionRows,
-        emergency_contact: emergencyRows,
-      },
-    });
+//     // 🔥 3. fetch all related data
 
-  } catch (err) {
-    console.error("getProfileByQRCode error:", err);
-    return res.status(500).json({ success: false, error: err.message });
-  } finally {
-    if (connection) connection.release();
-  }
-};
+//     const [allergyRows] = await connection.query(
+//       `SELECT id, name AS allergy_name, note AS allergy_notes, status
+//        FROM allergies 
+//        WHERE information_id = ? 
+//        ORDER BY id DESC`,
+//       [infoId]
+//     );
 
+//     const [medicationRows] = await connection.query(
+//       `SELECT id, name AS medicine_name, notes AS medicine_notes,
+//               dosage, dosage_unit, frequency, frequency_time, status
+//        FROM medicine 
+//        WHERE information_id = ? 
+//        ORDER BY id DESC`,
+//       [infoId]
+//     );
+
+//     const [insuranceRows] = await connection.query(
+//       `SELECT id, name AS insurance_name, note AS insurance_notes,
+//               phone AS insurance_phone, status
+//        FROM health_insurance 
+//        WHERE information_id = ? 
+//        ORDER BY id DESC`,
+//       [infoId]
+//     );
+
+//     const [conditionRows] = await connection.query(
+//       `SELECT id, name AS condition_name, note AS condition_notes, status
+//        FROM vital_medical 
+//        WHERE information_id = ? 
+//        ORDER BY id DESC`,
+//       [infoId]
+//     );
+
+//     const [emergencyRows] = await connection.query(
+//       `SELECT id, name, mobile, relation, email
+//        FROM emergency_contact 
+//        WHERE information_id = ? 
+//        ORDER BY id DESC`,
+//       [infoId]
+//     );
+
+//     // 🔥 FINAL RESPONSE
+//     return res.status(200).json({
+//       success: true,
+//       data: {
+//         ...info,
+//         qr,
+//         allergy: allergyRows,
+//         medication: medicationRows,
+//         insurance: insuranceRows,
+//         condition: conditionRows,
+//         emergency_contact: emergencyRows,
+//       },
+//     });
+
+//   } catch (err) {
+//     console.error("getProfileByQRCode error:", err);
+
+//     return res.status(500).json({
+//       success: false,
+//       error: err.message,
+//     });
+
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
 const linkProductToQR = async (req, res) => {
   let connection;
   try {
@@ -1797,6 +2094,214 @@ const linkProductToQR = async (req, res) => {
   }
 };
 
+const getIndividualProfileByQRCode = async (req, res) => {
+  let connection;
+  try {
+    const { code } = req.params;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: "QR code is required",
+      });
+    }
+
+    connection = await db.getConnection();
+
+    // 1. QR
+    const [qrRows] = await connection.query(
+      "SELECT * FROM new_qr WHERE code = ?",
+      [code]
+    );
+
+    if (!qrRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "QR code not found",
+      });
+    }
+
+    const qr = qrRows[0];
+
+    // 🔥 2. Info (NO status filter)
+    const [infoRows] = await connection.query(
+      `SELECT 
+          i.id,
+    i.image,
+    i.name,
+    i.phone,
+    i.email,
+    DATE_FORMAT(i.dob, '%Y-%m-%d') AS dob,
+    i.gender,
+    i.hair_color,
+    i.eye_color,
+    i.height,
+    i.weight,
+    i.blood_group,
+    i.identity,
+    i.address,
+    i.city,
+    i.state,
+    i.pin,
+    i.card_id,
+    DATE_FORMAT(i.date, '%Y-%m-%d') AS card_issue_date,
+    i.status2,
+    i.register_id,
+    i.status,
+    i.profile
+       FROM information i WHERE card_id = ?`,
+      [code]
+    );
+
+    if (!infoRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No profile linked to this QR",
+      });
+    }
+
+    const info = infoRows[0];
+    const infoId = info.id;
+
+    // 🔥 3. Parallel fetch
+    const [
+      allergyRows,
+      medicationRows,
+      insuranceRows,
+      conditionRows,
+      emergencyRows,
+    ] = await Promise.all([
+      connection.query(
+        `SELECT id, name AS allergy_name, note AS allergy_notes
+         FROM allergies WHERE information_id = ? AND status = 0 ORDER BY id DESC`,
+        [infoId]
+      ),
+      connection.query(
+        `SELECT id, name AS medicine_name, notes AS medicine_notes,
+                dosage, dosage_unit, frequency, frequency_time
+         FROM medicine WHERE information_id = ? AND status = 0 ORDER BY id DESC`,
+        [infoId]
+      ),
+      connection.query(
+        `SELECT id, name AS insurance_name, note AS insurance_notes,
+                phone AS insurance_phone
+         FROM health_insurance WHERE information_id = ? AND status = 0 ORDER BY id DESC`,
+        [infoId]
+      ),
+      connection.query(
+        `SELECT id, name AS condition_name, note AS condition_notes
+         FROM vital_medical WHERE information_id = ? AND status = 0 ORDER BY id DESC`,
+        [infoId]
+      ),
+      // ✅ NO status filter
+      connection.query(
+        `SELECT id, name, mobile, relation, email
+         FROM emergency_contact WHERE information_id = ? ORDER BY id DESC`,
+        [infoId]
+      ),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...info,
+        qr,
+        allergy: allergyRows[0],
+        medication: medicationRows[0],
+        insurance: insuranceRows[0],
+        condition: conditionRows[0],
+        emergency_contact: emergencyRows[0],
+      },
+    });
+
+  } catch (err) {
+    console.error("getProfileByQRCode error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+// const getIndividualProfileByQRCode = async (req, res) => {
+//   let connection;
+//   try {
+//     const { code } = req.params;
+//     if(!code){
+//       return res.status(400).json({ success: false, message: "QR code is required" });
+//     }
+//     connection = await db.getConnection();
+
+//     // 1. find the QR row
+//     const [qrRows] = await connection.query(
+//       "SELECT * FROM new_qr WHERE code = ?", [code]
+//     );
+//     if (!qrRows.length) {
+//       return res.status(404).json({ success: false, message: "QR code not found" });
+//     }
+
+//     const qr = qrRows[0];
+
+//     // 2. find the information row linked to this QR code
+//     const [infoRows] = await connection.query(
+//       "SELECT * FROM information WHERE card_id = ? AND status = 0", [code]
+//     );
+//     if (!infoRows.length) {
+//       return res.status(404).json({ success: false, message: "No profile linked to this QR" });
+//     }
+
+//     const info = infoRows[0];
+//     const infoId = info.id;
+
+//     // 3. fetch all sub-data (same as getIndividualProfileById)
+//     const [allergyRows] = await connection.query(
+//       `SELECT id, name AS allergy_name, note AS allergy_notes, status
+//        FROM allergies WHERE information_id = ? AND status = 0 ORDER BY id DESC`, [infoId]
+//     );
+
+//     const [medicationRows] = await connection.query(
+//       `SELECT id, name AS medicine_name, notes AS medicine_notes,
+//               dosage, dosage_unit, frequency, frequency_time, status
+//        FROM medicine WHERE information_id = ? AND status = 0 ORDER BY id DESC`, [infoId]
+//     );
+
+//     const [insuranceRows] = await connection.query(
+//       `SELECT id, name AS insurance_name, note AS insurance_notes,
+//               phone AS insurance_phone, status
+//        FROM health_insurance WHERE information_id = ? AND status = 0 ORDER BY id DESC`, [infoId]
+//     );
+
+//     const [conditionRows] = await connection.query(
+//       `SELECT id, name AS condition_name, note AS condition_notes, status
+//        FROM vital_medical WHERE information_id = ? AND status = 0 ORDER BY id DESC`, [infoId]
+//     );
+
+//     const [emergencyRows] = await connection.query(
+//       `SELECT id, name, mobile, relation, email
+//        FROM emergency_contact WHERE information_id = ? ORDER BY id DESC`, [infoId]
+//     );
+
+//     return res.status(200).json({
+//       success: true,
+//       data: {
+//         ...info,
+//         qr,
+//         allergy:           allergyRows,
+//         medication:        medicationRows,
+//         insurance:         insuranceRows,
+//         condition:         conditionRows,
+//         emergency_contact: emergencyRows,
+//       },
+//     });
+
+//   } catch (err) {
+//     console.error("getProfileByQRCode error:", err);
+//     return res.status(500).json({ success: false, error: err.message });
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
 const unlinkProductFromQR = async (req, res) => {
   let connection;
   try {
@@ -1843,7 +2348,7 @@ const unlinkProductFromQR = async (req, res) => {
 
     // ✅ update information
     const [updateInformation] = await connection.query(
-      `UPDATE information SET card_id = 0, date = NULL WHERE id = ?`,
+      `UPDATE information SET card_id = NULL, date = NULL WHERE id = ?`,
       [id]
     );
 
@@ -2046,6 +2551,7 @@ const updateViewOrHideData = async (req, res) => {
     }
 
     connection = await db.getConnection();
+    await connection.beginTransaction();
 
     // 🔥 1. Get current status from information table
     const [rows] = await connection.query(
@@ -2067,10 +2573,58 @@ const updateViewOrHideData = async (req, res) => {
     const newStatus = currentStatus == 1 ? 0 : 1;
 
     // 🔥 3. Update
-    await connection.query(
-      `UPDATE information SET status = ? WHERE id = ?`,
-      [newStatus, id]
-    );
+    // await connection.query(
+    //   `UPDATE information SET status = ? WHERE id = ?`,
+    //   [newStatus, id]
+    // );
+
+    // await connection.query(
+    //   `UPDATE allergies SET status = ? WHERE information_id = ?`,
+    //   [newStatus, id]
+    // );
+    // await connection.query(
+    //   `UPDATE vital_medical SET status = ? WHERE information_id = ?`,
+    //   [newStatus, id]
+    // );
+
+    // await connection.query(
+    //   `UPDATE medicine SET status = ? WHERE information_id = ?`,
+    //   [newStatus, id]
+    // );
+
+    // await connection.query(
+    //   `UPDATE health_insurance SET status = ? WHERE information_id = ?`,
+    //   [newStatus, id]
+    // );
+
+    // 2. Run updates in parallel
+    await Promise.all([
+
+      connection.query(
+        `UPDATE information SET status = ? WHERE id = ?`,
+        [newStatus, id]
+      ),
+     
+      connection.query(
+        `UPDATE allergies SET status = ? WHERE information_id = ?`,
+        [newStatus, id]
+      ),
+      connection.query(
+        `UPDATE vital_medical SET status = ? WHERE information_id = ?`,
+        [newStatus, id]
+      ),
+      connection.query(
+        `UPDATE medicine SET status = ? WHERE information_id = ?`,
+        [newStatus, id]
+      ),
+      connection.query(
+        `UPDATE health_insurance SET status = ? WHERE information_id = ?`,
+        [newStatus, id]
+      ),
+
+    ]);
+
+    await connection.commit(); // ✅ SUCCESS
 
     return res.json({
       success: true,
@@ -2080,7 +2634,7 @@ const updateViewOrHideData = async (req, res) => {
 
   } catch (err) {
     console.error("updateViewOrHideData error:", err);
-
+    if(connection) await connection.rollback();
     return res.status(500).json({
       success: false,
       error: err.message,
@@ -2091,11 +2645,130 @@ const updateViewOrHideData = async (req, res) => {
   }
 };
 
+
+const getEmergencyContactEmail = async (req, res) => {
+    let connection;
+  try {
+     const { code } = req.params;
+      console.log("code:", code);
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: "QR code is required",
+      });
+    }
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      `SELECT id FROM information WHERE card_id = ?`,
+      [code]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Record not found",
+      });
+    }
+
+    const informationId = rows[0].id;
+
+    const [email] = await connection.query(
+      `SELECT email FROM emergency_contact WHERE information_id = ?`,
+      [informationId]
+    );
+    if (!email.length) {
+  return res.status(404).json({
+    success: false,
+    message: "Emergency contact not found",
+  });
+}
+    console.log("email:", email);
+
+    await connection.commit();
+    return res.json({ success: true, email: email[0].email });
+  } catch (err) {
+    console.error("getEmergencyContactEmail error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }finally {
+    if (connection) connection.release();
+  }
+};
+
+const sendLocationMail = async (req, res) => {
+  try {
+    const { email, locationLink } = req.body;
+
+
+    
+
+
+
+    if (!email || !locationLink) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and location required",
+      });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: "tagway.co.in",
+      port: 465,
+      secure: true,
+      auth: {
+        user: "noreply@tagway.co.in",
+        pass: "Tagway@123",
+      },
+    });
+
+    const htmlTemplate = `
+      <div style="font-family: Arial;">
+        <h3>🚨 Emergency Location Alert</h3>
+        <p>Someone scanned your QR code and shared their live location.</p>
+        
+
+        <a href="${locationLink}" target="_blank" 
+           style="padding:10px 15px; background:#007bff; color:#fff; text-decoration:none;">
+          📍 View Location
+        </a>
+
+        <p style="margin-top:10px;">
+          Or copy this link:<br/>
+          ${locationLink}
+        </p>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: '"TAGWAY" <noreply@tagway.co.in>',
+      to: email,
+      subject: "🚨 Emergency Location",
+      html: htmlTemplate,
+    });
+
+    return res.json({
+      success: true,
+      message: "Location sent successfully",
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send location",
+    });
+  }
+};
 export { createProfile, editProfile,editProfileImage, deleteIndividualProfile, editAddress, getAllProfilesByUser, getIndividualProfileById
   , addCondition, editCondition, deleteCondition, addAllergy, editAllergy, deleteAllergy
   , addInsurance, editInsurance, deleteInsurance, addMedication, editMedication, deleteMedication
   , addEmergencyContact, editEmergencyContact, deleteEmergencyContact, linkProductToQR,unlinkProductFromQR,
-   getIndividualProfileByQRCode,getIndividualProfileByTagId, updateViewOrHideData
+   getIndividualProfileByQRCode,getIndividualProfileByTagId, updateViewOrHideData,sendOtpToVerifyEnergencyContact,
+   verifyOtpEmergencyContact,getEmergencyContactEmail,sendLocationMail
  };
 //  const getIndividualProfileById = async (req, res) => {
 //   let connection;

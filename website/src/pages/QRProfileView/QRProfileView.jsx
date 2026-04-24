@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
-import { useGetIndividualProfileByQRCodeQuery } from "../../redux/api/profileApi";
+import { useGetEmergencyContactEmailQuery, useGetIndividualProfileByQRCodeQuery, useSendLocationToMailMutation } from "../../redux/api/profileApi";
+import { toast } from "react-toastify";
 
 
 export default function QRProfileView() {
@@ -9,11 +10,15 @@ export default function QRProfileView() {
 
   // decode base64 → 6-digit code
   const code = encodedCode ? atob(encodedCode) : null;
+  console.log("Decoded ID:", code);
 
+  const{data:emergencyContactMail}=useGetEmergencyContactEmailQuery(code,{skip: !code});
+  const mailToSend=emergencyContactMail?.email;
+  console.log("mail to send",mailToSend);
   const { data, isLoading, isError } = useGetIndividualProfileByQRCodeQuery(code, { skip: !code });
 
   const individualProfile = data?.data;
-
+  const[sendLocationToMail,{isLoading:sendLocationToMailLoading}]=useSendLocationToMailMutation();
   const formatDOB = (dob) => {
     if (!dob) return "-";
     if (dob.startsWith("1899") || dob.startsWith("1900") || dob === "0000-00-00") return "-";
@@ -72,8 +77,61 @@ export default function QRProfileView() {
 
     return `${years} years, ${months} months, ${days} days`;
   };
-  const capitalize = (str) =>
-  str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+
+
+  // const capitalize = (str) =>
+  // str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+
+
+//   const handleSendLocation = () => {
+//   navigator.geolocation.getCurrentPosition((position) => {
+//     const { latitude, longitude } = position.coords;
+
+//     const locationLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+
+//     // ✅ Open map instantly
+//     window.open(locationLink, "_blank");
+//   });
+// };
+const handleSendLocation = () => {
+
+
+  if (!navigator.geolocation) {
+    alert("Geolocation not supported");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const { latitude, longitude } = position.coords;
+
+      const locationLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+
+      try {
+        // ✅ Call backend API
+        const res = await sendLocationToMail({
+          email: mailToSend,
+          locationLink,
+        }).unwrap();
+
+        if (res.success) {
+          toast.success("Location sent successfully!");
+          // alert("Location sent successfully 📩");
+
+          // optional: open map for user
+          // window.open(locationLink, "_blank");
+        }
+      } catch (err) {
+        console.error(err);
+       toast.error("Unable to send location");
+      }
+    },
+    (error) => {
+      console.error(error);
+      alert("Unable to fetch location");
+    }
+  );
+};
   return (
     <>
       {/* Breadcrumb */}
@@ -100,12 +158,27 @@ export default function QRProfileView() {
             {/* LEFT */}
             <div className="col-lg-4 mb-4">
               <div className="editimg text-center p-4" style={{ border: "1px solid #eee", borderRadius: "10px" }}>
-                <img
+                {/* <img
                   src={`http://localhost:4000/uploads/${individualProfile?.image}`}
                   alt="profile"
                   style={{ width: "120px", height: "120px", borderRadius: "50%", objectFit: "cover" }}
                 //   onError={(e) => { e.target.src = "/assets/img/profile.jpg"; }}
-                />
+                /> */}
+                   <img
+              src={
+               individualProfile?.image
+                  ? `http://localhost:4000/uploads/${individualProfile?.image}`
+                  : "/assets/img/logo.png"
+               
+              }
+              alt="profile"
+                  style={{
+                    width: "120px",
+                    height: "120px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                  }}
+            />
                 {/* <h4 className="mt-3">{individualProfile?.name}</h4>
                 <p>from {individualProfile?.city || "city"}, {individualProfile?.state || "state"}, INDIA</p> */}
 
@@ -129,11 +202,21 @@ export default function QRProfileView() {
                   </p> */}
                     {individualProfile?.profile !=="OTHER" && (
                     <p>
-                      Your age: {getAge(individualProfile?.dob)},{capitalize(individualProfile?.city)},{capitalize(individualProfile?.state)}
+                      Your age: {getAge(individualProfile?.dob)}
+                      {/* {capitalize(individualProfile?.city)}
+                      {capitalize(individualProfile?.state)} */}
                     </p>
                   )}
-                 <button className="btn btn-dark btn-sm" disabled>
-                        <i className="fa fa-link"></i> Send GPS Location
+                 {/* <button className="btn btn-dark btn-sm" disabled>
+                        <i className="fa fa-link"></i>
+                         Send GPS Location
+                      </button> */}
+                       <button
+                       onClick={handleSendLocation}
+                       disabled={sendLocationToMailLoading}
+                        className="btn btn-dark btn-sm" >
+                        <i className="fa fa-link"></i>
+                         {sendLocationToMailLoading?"Sending...":"Send GPS Location"}
                       </button>
               </div>
             </div>
@@ -197,6 +280,7 @@ export default function QRProfileView() {
                       <table className="table">
                         <tbody>
                           <tr><th>Mobile:</th><td>{row.mobile || "-"}</td></tr>
+                            <tr><th>Email:</th><td>{row.email  || "-"}</td></tr>
                         </tbody>
                       </table>
                     </div>

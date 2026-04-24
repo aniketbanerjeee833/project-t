@@ -1,4 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+;
+
+
 
 
 
@@ -18,7 +21,8 @@ export const profileApi = createApi({
     baseUrl: "http://localhost:4000/api/user/",
     credentials: "include",
   }),
-  tagTypes: ["Profile", "Allergy", "Medication", "Insurance", "Condition", "EmergencyContact"],
+  tagTypes: ["Profile", "Allergy", "Medication", "Insurance", "Condition",
+     "EmergencyContact"],
 
   endpoints: (builder) => ({
 
@@ -289,7 +293,37 @@ getIndividualProfileByQRCode: builder.query({
   providesTags: ["Profile"],
 }),
 
+sendEmergencyContactOTP: builder.mutation({
+  query: (body) => ({
+    url: `profile/emergency-contact-otp`,
+    method: "POST",
+    body, 
   }),
+  invalidatesTags: ["EmergencyContact"],
+}),
+verifyOTPEmergencyContact: builder.mutation({
+  query: (body) => ({
+    url: `profile/verify-emergency-contact-otp`,
+    method: "POST",
+    body,
+  }),
+  invalidatesTags: ["EmergencyContact"],
+}),
+
+getEmergencyContactEmail: builder.query({
+  query: (code) => `profile/emergency-contact-email/${code}`
+ 
+}),
+sendLocationToMail: builder.mutation({
+  query: (body) => ({
+    url: `profile/send-location-email`,
+    method: "POST",
+    body,
+  }),
+  
+  
+}),
+  })
 });
 
 export const {
@@ -335,4 +369,10 @@ export const {
   useLinkProductToQRMutation,
   useUnlinkProductFromQRMutation,
   useGetIndividualProfileByQRCodeQuery,
+
+  useSendEmergencyContactOTPMutation,
+  useVerifyOTPEmergencyContactMutation,
+
+  useGetEmergencyContactEmailQuery,
+  useSendLocationToMailMutation
 } = profileApi;

@@ -63,7 +63,7 @@ const compressImage = async (filePath, customFolder = null) => {
   const outputPath = path.join(outputDir, filename);
 
   await sharp(filePath)
-    .jpeg({ quality: 30 })
+    .jpeg({ quality: 60 })
     .toFile(outputPath);
 
   fs.unlinkSync(filePath);

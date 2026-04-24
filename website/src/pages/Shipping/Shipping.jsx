@@ -115,9 +115,9 @@
 //     </>
 //   )
 // }
-import { useState } from "react";
+
 import { useNavigate, useParams } from "react-router-dom";
-import { useAddPurchaseMutation, useGetAllDiscountsQuery, useGetAllProductsQuery, useGetAllShippingPricesQuery, useGetShippingByInIdQuery } from "../../redux/api/shopApi";
+import { useAddPurchaseMutation,  useGetAllProductsQuery,  useGetShippingByInIdQuery } from "../../redux/api/shopApi";
 import { toast } from "react-toastify";
 
 export default function Shipping() {
@@ -129,54 +129,57 @@ export default function Shipping() {
   const idUser = atob(id2);
 
   console.log(inId, idUser);
-  const [sameAddress, setSameAddress] = useState(true);
+  // const [sameAddress, setSameAddress] = useState(true);
   const { data: shippingData, isLoading: shippingLoading } = useGetShippingByInIdQuery(inId, { skip: !inId });
 
   console.log(shippingData, shippingLoading);
   const shipping = shippingData?.data;
+  console.log(shipping);
 
   // const [discountCode, setDiscountCode] = useState("");
   // const [discountApplied, setDiscountApplied] = useState(0);
-  const { data: shippingPriceData } = useGetAllShippingPricesQuery();
-  const { data: discountData } = useGetAllDiscountsQuery();
+  // const { data: shippingPriceData } = useGetAllShippingPricesQuery();
+  // const { data: discountData } = useGetAllDiscountsQuery();
   const { data: productsData } = useGetAllProductsQuery();
   const product = productsData?.data?.[0];
-  console.log(discountData, productsData);
+  console.log( productsData);
   // first product
 
-  const [discountCode, setDiscountCode] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState(0);
-  const [isApplied, setIsApplied] = useState(false);
+  // const [discountCode, setDiscountCode] = useState("");
+  // const [appliedDiscount, setAppliedDiscount] = useState(0);
+  // const [isApplied, setIsApplied] = useState(false);
   const subtotal = Number(product?.price); // replace with real cart/product price
-  const shippingFee = Number(shippingPriceData?.data?.price || 59);
+  // const appliedDiscount=0;
+  // const shippingFee = Number(shippingPriceData?.data?.price || 59);
+  // const shippingFee = 0;
+  // const discountAmount = (subtotal * appliedDiscount) / 100;
 
-  const discountAmount = (subtotal * appliedDiscount) / 100;
+  // const total = (subtotal  - discountAmount).toFixed(2);
+  const total = (subtotal).toFixed(2);
+  // const handleApplyDiscount = () => {
+  //   if (!discountCode.trim()) {
+  //     toast.error("Please enter a discount code");
+  //     return;
+  //   }
 
-  const total = (subtotal + shippingFee - discountAmount).toFixed(2);
-  const handleApplyDiscount = () => {
-    if (!discountCode.trim()) {
-      toast.error("Please enter a discount code");
-      return;
-    }
+  //   if (isApplied) {
+  //     toast.error("Discount already applied");
+  //     return;
+  //   }
 
-    if (isApplied) {
-      toast.error("Discount already applied");
-      return;
-    }
+  //   const found = discountData?.data?.find(
+  //     (d) => d.code.toLowerCase() === discountCode.toLowerCase()
+  //   );
 
-    const found = discountData?.data?.find(
-      (d) => d.code.toLowerCase() === discountCode.toLowerCase()
-    );
+  //   if (!found) {
+  //     toast.error("Invalid discount code");
+  //     return;
+  //   }
 
-    if (!found) {
-      toast.error("Invalid discount code");
-      return;
-    }
-
-    setAppliedDiscount(Number(found.discount));
-    setIsApplied(true);
-    toast.success(`Discount ${found.discount}% applied`);
-  };
+  //   setAppliedDiscount(Number(found.discount));
+  //   setIsApplied(true);
+  //   toast.success(`Discount ${found.discount}% applied`);
+  // };
   //const productPrice = Number(product?.price || 0);
   //const subtotal     = productPrice;
   //const discount     = (subtotal * discountApplied) / 100;
@@ -293,21 +296,23 @@ export default function Shipping() {
 
                 {/* Shipping */}
                 <div className="section">
-                  <h5>Shipping Method</h5>
-                  <p>
-                    Shipping within 24 hours - <b>₹59.00</b>
-                  </p>
+                  {/* <h5>Shipping Method</h5> */}
+                  <h5>We will contact You within 48 hours</h5>
+                  {/* <p>
+                    {/* Shipping within 24 hours - <b>₹59.00</b>
+                    We will contact You within 48 hours
+                  </p> */}
                 </div>
 
                 {/* Payment */}
-                <div className="section">
+                {/* <div className="section">
                   <h5>Payment Method</h5>
                   <p>All transactions are secure and encrypted.</p>
                   <img src="/assets/img/pay.jpg" alt="Payment Methods" />
-                </div>
+                </div> */}
 
                 {/* Billing */}
-                <div className="section">
+                {/* <div className="section">
                   <h5>Billing Address</h5>
 
                   <label className="checkbox">
@@ -318,7 +323,7 @@ export default function Shipping() {
                     />
                     Same as shipping address
                   </label>
-                </div>
+                </div> */}
 
                 {/* <button className="probtn">Complete Order</button> */}
                 <button
@@ -340,7 +345,7 @@ export default function Shipping() {
                   <input type="text" placeholder="Discount Code" />
                   <button type="submit">Apply</button>
                 </form> */}
-                <form
+                {/* <form
                   className="discount-form"
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -365,7 +370,7 @@ export default function Shipping() {
                   <button type="submit" disabled={!discountCode || isApplied}>
                     {isApplied ? "Applied" : "Apply"}
                   </button>
-                </form>
+                </form> */}
 
                 {/* Price */}
                 {/* <div className="price-box">
@@ -400,18 +405,18 @@ export default function Shipping() {
                     <div className="col-6 text-right">₹{subtotal}</div>
                   </div>
 
-                  <div className="row">
+                  {/* <div className="row">
                     <div className="col-6">Shipping</div>
                     <div className="col-6 text-right">₹{shippingFee}</div>
-                  </div>
+                  </div> */}
 
                   {/* ✅ SHOW DISCOUNT */}
-                  {appliedDiscount > 0 && (
+                  {/* {appliedDiscount > 0 && (
                     <div className="row text-success">
                       <div className="col-6">Discount ({appliedDiscount}%)</div>
                       <div className="col-6 text-right">- ₹{discountAmount}</div>
                     </div>
-                  )}
+                  )} */}
 
                   <hr />
 

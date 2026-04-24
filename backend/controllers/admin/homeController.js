@@ -1,6 +1,9 @@
-import e from "express";
+
 import db from "../../config/db.js";
 import compressImage from "../../utils/imageCompressor.js";
+import path from "path";
+import fs from "fs";
+import compressSliderImage from "../../utils/sliderImageCompressor.js";
 
 const getAllTagText = async (req, res, next) => {
   let connection;
@@ -142,7 +145,7 @@ const updateTagText = async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-        await connection.rollback();
+      await connection.rollback();
       return res.status(404).json({
         success: false,
         message: "Record not found",
@@ -254,7 +257,7 @@ const getSingleWork = async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
-    if(!id){
+    if (!id) {
       return res.status(400).json({
         success: false,
         message: "Id is mandatory",
@@ -286,7 +289,7 @@ const getSingleWork = async (req, res) => {
       success: false,
       message: "Something went wrong",
     })
-  
+
   } finally {
     if (connection) connection.release();
   }
@@ -295,8 +298,8 @@ const updateWork = async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
-    const {  text } = req.body;
-    if(!id){
+    const { text } = req.body;
+    if (!id) {
       return res.status(400).json({
         success: false,
         message: "Id is mandatory",
@@ -313,7 +316,7 @@ const updateWork = async (req, res) => {
       SET  text = ?
       WHERE id = ?
       `,
-      [ text, id]
+      [text, id]
     );
 
     if (result.affectedRows === 0) {
@@ -432,7 +435,7 @@ const getSingleWork2 = async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
-    if(!id){
+    if (!id) {
       return res.status(400).json({
         success: false,
         message: "Id is mandatory",
@@ -464,7 +467,7 @@ const getSingleWork2 = async (req, res) => {
       success: false,
       message: "Something went wrong",
     })
-  
+
   } finally {
     if (connection) connection.release();
   }
@@ -473,8 +476,8 @@ const updateWork2 = async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
-    const {  text } = req.body;
-    if(!id){
+    const { text } = req.body;
+    if (!id) {
       return res.status(400).json({
         success: false,
         message: "Id is mandatory",
@@ -491,7 +494,7 @@ const updateWork2 = async (req, res) => {
       SET  text = ?
       WHERE id = ?
       `,
-      [ text, id]
+      [text, id]
     );
 
     if (result.affectedRows === 0) {
@@ -681,11 +684,11 @@ const getSingleCustomerSay = async (req, res) => {
 
   } catch (err) {
     console.error("getSingleCustomerSay error:", err);
-   return res.status(500).json({
-     success: false,
-     error: err.message,
-     message: "Get failed"
-   })
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      message: "Get failed"
+    })
   } finally {
     if (connection) connection.release();
   }
@@ -769,6 +772,7 @@ const deleteCustomerSay = async (req, res) => {
 const addSliderImage = async (req, res) => {
   let connection;
   try {
+    const { text1, text2 } = req.body
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -785,13 +789,13 @@ const addSliderImage = async (req, res) => {
     connection = await db.getConnection();
 
     const [result] = await connection.query(
-      `INSERT INTO slider_img (image) VALUES (?)`,
-      [imagePath]
+      `INSERT INTO slider_img (image,text1,text2)  VALUES (?,?,?)`,
+      [imagePath, text1, text2]
     );
 
     return res.json({
       success: true,
-      message: "Image added successfully ✅",
+      message: "Slider image and text added successfully ✅",
       id: result.insertId,
       image: imagePath,
     });
@@ -819,7 +823,7 @@ const getAllSliderImages = async (req, res) => {
     // =========================
     if (!isAdmin) {
       const [rows] = await connection.query(`
-        SELECT id, image
+        SELECT id, image,text1,text2
         FROM slider_img
         ORDER BY id DESC
       `);
@@ -851,7 +855,7 @@ const getAllSliderImages = async (req, res) => {
 
     const [rows] = await connection.query(
       `
-      SELECT id, image
+       SELECT id, image, text1, text2
       FROM slider_img
       ${searchQuery}
       ORDER BY id DESC
@@ -894,6 +898,59 @@ const getAllSliderImages = async (req, res) => {
   }
 };
 
+// const deleteSliderImage = async (req, res) => {
+//   let connection;
+//   try {
+//     const { id } = req.params;
+
+//     connection = await db.getConnection();
+
+//     const [result] = await connection.query(
+//       `DELETE FROM slider_img WHERE id = ?`,
+//       [id]
+//     );
+
+//     const imagePath = result[0].image;
+
+//         // 🗑 delete image if exists
+//         if (imagePath) {
+//           const filename = imagePath.split("/").pop();
+
+//           const fullPath = path.join(
+//             process.cwd(),
+//             "uploads/admin/slider_image",
+//             filename
+//           );
+
+//           if (fs.existsSync(fullPath)) {
+//             fs.unlinkSync(fullPath);
+//           }
+//         }
+
+//     if (result.affectedRows === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Image not found",
+//       });
+//     }
+
+//     return res.json({
+//       success: true,
+//       message: "Deleted successfully 🗑️",
+//     });
+
+//   } catch (err) {
+//     console.error("deleteSliderImage error:", err);
+//     return res.status(500).json({
+//       success: false,
+//       error: err.message,
+//       message: "Delete failed"
+//     })
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
+
 const deleteSliderImage = async (req, res) => {
   let connection;
   try {
@@ -901,17 +958,39 @@ const deleteSliderImage = async (req, res) => {
 
     connection = await db.getConnection();
 
-    const [result] = await connection.query(
-      `DELETE FROM slider_img WHERE id = ?`,
+    // 🔥 1. Get image path first
+    const [rows] = await connection.query(
+      `SELECT image FROM slider_img WHERE id = ?`,
       [id]
     );
 
-    if (result.affectedRows === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Image not found",
       });
     }
+
+    const imagePath = rows[0].image;
+
+    // 🔥 2. Delete file FIRST
+    if (imagePath) {
+      const fullPath = path.join(process.cwd(), "uploads", imagePath);
+
+      console.log("Deleting file:", fullPath);
+
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      } else {
+        console.warn("File not found on disk:", fullPath);
+      }
+    }
+
+    // 🔥 3. Delete from DB AFTER file delete
+    await connection.query(
+      `DELETE FROM slider_img WHERE id = ?`,
+      [id]
+    );
 
     return res.json({
       success: true,
@@ -920,17 +999,359 @@ const deleteSliderImage = async (req, res) => {
 
   } catch (err) {
     console.error("deleteSliderImage error:", err);
+
     return res.status(500).json({
       success: false,
       error: err.message,
-      message: "Delete failed"
-    })
+      message: "Delete failed",
+    });
+
   } finally {
     if (connection) connection.release();
   }
 };
-export { addSliderImage, getAllSliderImages, deleteSliderImage,
-  getAllTagText, getSingleTagText, updateTagText, getAllWorks, getSingleWork, updateWork,
-getAllWorks2, getSingleWork2, updateWork2, addCustomerSay, getAllCustomerSay, getSingleCustomerSay, 
-deleteCustomerSay, updateCustomerSay
- };
+const editSliderImage = async (req, res) => {
+  let connection;
+  let newImagePath = null;
+
+  try {
+    const { id } = req.params;
+    const { text1, text2 } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID is required",
+      });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    // 🔥 1. Get old image
+    const [rows] = await connection.query(
+      `SELECT image FROM slider_img WHERE id = ?`,
+      [id]
+    );
+
+    if (!rows.length) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Slider not found",
+      });
+    }
+
+    const oldImage = rows[0].image;
+
+    // 🔥 2. Compress new image (always stored inside uploads)
+    if (req.file) {
+      newImagePath = await compressSliderImage(
+        req.file.path,
+        "admin/slider_image"
+      );
+      // newImagePath = await compressImage(
+      //   req.file.path,
+      //   "admin/slider_image"
+      // ); // returns: admin/slider_image/xyz.jpg
+    }
+
+    // 🔥 3. Update DB
+    let updateQuery = `
+      UPDATE slider_img 
+      SET text1 = ?, text2 = ?
+    `;
+    let values = [text1?.trim() || "", text2?.trim() || ""];
+
+    if (newImagePath) {
+      updateQuery += `, image = ?`;
+      values.push(newImagePath);
+    }
+
+    updateQuery += ` WHERE id = ?`;
+    values.push(id);
+
+    const [result] = await connection.query(updateQuery, values);
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Update failed",
+      });
+    }
+
+    await connection.commit(); // ✅ commit first
+
+    // 🔥 4. Delete old image
+    // if (newImagePath && oldImage && newImagePath !== oldImage) {
+    //   const oldPath = path.join(process.cwd(), "uploads", oldImage);
+
+    //   console.log("Deleting old:", oldPath);
+
+    //   try {
+    //     if (fs.existsSync(oldPath)) {
+    //       await fs.promises.unlink(oldPath);
+    //       console.log("Old image deleted ✅");
+    //     } else {
+    //       console.warn("Old image not found ❌:", oldPath);
+    //     }
+    //   } catch (err) {
+    //     console.error("Delete error:", err);
+    //   }
+    // }
+    // 🔥 4. Delete old image safely
+    if (newImagePath && oldImage && newImagePath !== oldImage) {
+      const oldPath = path.join(process.cwd(), "uploads", oldImage);
+
+      console.log("Deleting:", oldPath);
+
+      try {
+        if (fs.existsSync(oldPath)) {
+          await fs.promises.unlink(oldPath);
+          console.log("Old image deleted ✅");
+        } else {
+          console.warn("File not found ❌:", oldPath);
+        }
+      } catch (err) {
+        console.error("Delete error:", err);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Updated successfully ✏️",
+      image: newImagePath || oldImage,
+    });
+
+  } catch (err) {
+    if (connection) await connection.rollback();
+
+    console.error("editSliderImage error:", err);
+
+    // 🔥 cleanup new image if error
+    if (newImagePath) {
+      const newPath = path.join(process.cwd(), "uploads", newImagePath);
+
+      try {
+        if (fs.existsSync(newPath)) {
+          await fs.promises.unlink(newPath);
+        }
+      } catch (cleanupErr) {
+        console.error("Cleanup error:", cleanupErr);
+      }
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Update failed",
+      error: err.message,
+    });
+
+  } finally {
+    if (connection) connection.release();
+  }
+};
+// const deleteSliderImage = async (req, res) => {
+//   let connection;
+//   try {
+//     const { id } = req.params;
+
+//     connection = await db.getConnection();
+
+//     // 🔥 1. Get image path first
+//     const [rows] = await connection.query(
+//       `SELECT image FROM slider_img WHERE id = ?`,
+//       [id]
+//     );
+
+//     if (rows.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Image not found",
+//       });
+//     }
+
+//     const imagePath = rows[0].image;
+
+//     // 🔥 2. Delete file FIRST
+//     if (imagePath) {
+//       const fullPath = path.join(process.cwd(), "uploads", imagePath);
+
+//       console.log("Deleting file:", fullPath);
+
+//       if (fs.existsSync(fullPath)) {
+//         fs.unlinkSync(fullPath);
+//       } else {
+//         console.warn("File not found on disk:", fullPath);
+//       }
+//     }
+
+//     // 🔥 3. Delete from DB AFTER file delete
+//     await connection.query(
+//       `DELETE FROM slider_img WHERE id = ?`,
+//       [id]
+//     );
+
+//     return res.json({
+//       success: true,
+//       message: "Deleted successfully 🗑️",
+//     });
+
+//   } catch (err) {
+//     console.error("deleteSliderImage error:", err);
+
+//     return res.status(500).json({
+//       success: false,
+//       error: err.message,
+//       message: "Delete failed",
+//     });
+
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
+
+
+const getAllRegisterImage=async(req,res)=>{
+  let connection;
+  try {
+    connection = await db.getConnection();
+    const [rows] = await connection.query(`SELECT * FROM register_image`);
+    return res.json({
+      success: true,
+      data: rows,
+    });
+  } catch (err) {
+    console.error("getAllSliderImage error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      message: "Get failed",
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+}
+const editRegisterImage = async (req, res) => {
+  let connection;
+  let newImagePath = null;
+
+  try {
+    const { id } = req.params;
+
+    // ✅ validation
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID is required",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Image file is required",
+      });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    // 🔥 1. Get old image
+    const [rows] = await connection.query(
+      `SELECT image FROM register_image WHERE id = ?`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Image not found",
+      });
+    }
+
+    const oldImage = rows[0].image;
+
+    // 🔥 2. Upload & compress new image
+    newImagePath = await compressImage(
+      req.file.path,
+      "admin/register_image"
+    );
+
+    // 🔥 3. Update DB
+    const [result] = await connection.query(
+      `UPDATE register_image SET image = ? WHERE id = ?`,
+      [newImagePath, id]
+    );
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Update failed",
+      });
+    }
+
+    // ✅ commit first
+    await connection.commit();
+
+    // 🔥 4. Delete old image safely (AFTER commit)
+    if (oldImage && newImagePath !== oldImage) {
+      const oldPath = path.join(process.cwd(), "uploads", oldImage);
+
+      console.log("Deleting old:", oldPath);
+
+      try {
+        if (fs.existsSync(oldPath)) {
+          await fs.promises.unlink(oldPath);
+          console.log("Old image deleted ✅");
+        } else {
+          console.warn("File not found ❌:", oldPath);
+        }
+      } catch (err) {
+        console.error("Delete error:", err);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Image updated successfully ✅",
+      image: newImagePath,
+    });
+
+  } catch (err) {
+    if (connection) await connection.rollback();
+
+    console.error("editRegisterPageImage error:", err);
+
+    // 🔥 cleanup new uploaded image if error
+    if (newImagePath) {
+      const newPath = path.join(process.cwd(), "uploads", newImagePath);
+
+      try {
+        if (fs.existsSync(newPath)) {
+          await fs.promises.unlink(newPath);
+        }
+      } catch (cleanupErr) {
+        console.error("Cleanup error:", cleanupErr);
+      }
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Update failed",
+      error: err.message,
+    });
+
+  } finally {
+    if (connection) connection.release();
+  }
+};
+  export {
+    addSliderImage, getAllSliderImages, deleteSliderImage,
+    getAllTagText, getSingleTagText, updateTagText, getAllWorks, getSingleWork, updateWork,
+    getAllWorks2, getSingleWork2, updateWork2, addCustomerSay, getAllCustomerSay, getSingleCustomerSay,
+    deleteCustomerSay, updateCustomerSay, editSliderImage, getAllRegisterImage,editRegisterImage
+  };

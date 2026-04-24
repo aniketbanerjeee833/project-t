@@ -20,7 +20,11 @@ import { createProfile, getAllProfilesByUser, getIndividualProfileById,
     getIndividualProfileByQRCode,
     unlinkProductFromQR,
     getIndividualProfileByTagId,
-    updateViewOrHideData} from "../controllers/profileController.js";
+    updateViewOrHideData,
+    sendOtpToVerifyEnergencyContact,
+    verifyOtpEmergencyContact,
+    sendLocationMail,
+    getEmergencyContactEmail} from "../controllers/profileController.js";
 import createUploader from "../utils/upload.js";
 
 
@@ -63,5 +67,10 @@ router.patch("/unlink-product-qr/:id", unlinkProductFromQR);
 router.get("/profile-details-qr/:code", getIndividualProfileByQRCode); // for QR code scanning and fetching profile details
 
 router.patch("/update-view-status/:id", updateViewOrHideData);
+
+router.post("/emergency-contact-otp", sendOtpToVerifyEnergencyContact);
+router.post("/verify-emergency-contact-otp",verifyOtpEmergencyContact );
+router.get("/emergency-contact-email/:code",getEmergencyContactEmail)
+router.post("/send-location-email", sendLocationMail);
 
 export default router;

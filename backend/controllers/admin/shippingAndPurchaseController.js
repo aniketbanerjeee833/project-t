@@ -20,9 +20,11 @@ const getAllShipping = async (req, res) => {
           name LIKE ?
           OR phone LIKE ?
           OR address LIKE ?
+          OR city LIKE ?
+         
         )
       `;
-      values = [`%${search}%`, `%${search}%`, `%${search}%`];
+      values = [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`];
     }
 
     connection = await db.getConnection();
@@ -98,9 +100,10 @@ const getAllPurchase = async (req, res) => {
           name LIKE ?
           OR phone LIKE ?
           OR address LIKE ?
+          OR price LIKE ?
         )
       `;
-      values = [`%${search}%`, `%${search}%`, `%${search}%`];
+      values = [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`];
     }
 
     connection = await db.getConnection();

@@ -10,12 +10,13 @@ export default function Home() {
 
   const navigate = useNavigate();
   const[tagId, setTagId] = useState("");
-
+const icons = ["⚡", "👤", "🔒"];
   const { data: tagTextData } = useGetAllTagTextQuery();
 const { data: worksData } = useGetAllWorksQuery();
 const { data: works2Data } = useGetAllWorks2Query();
 const { data: customerSayData } = useGetAllCustomerSayQuery();
 const { data: sliderData } = useGetAllSliderImagesQuery();
+console.log("Slides count:", sliderData?.data?.length);
   const handleViewProfileByTagId = () => {
     if(!tagId){
       toast.error("Please enter a tag id");
@@ -29,7 +30,8 @@ const { data: sliderData } = useGetAllSliderImagesQuery();
    <div className="hero-area">
   <Swiper
     modules={[Autoplay, Pagination, Navigation]}
-    loop={true}
+    loop={sliderData?.data?.length > 1}
+    // loop={true}
     autoplay={{
       delay: 4000,
       disableOnInteraction: false,
@@ -120,10 +122,14 @@ const { data: sliderData } = useGetAllSliderImagesQuery();
               <div className="row h-100 align-items-center justify-content-center">
                 <div className="col-12 col-lg-9">
                   <div className="welcome-text text-center">
-                    <h2>FIX IT <span>OR</span> SEDATE IT</h2>
-                    <p>
+                    {/* <h2>FIX IT <span>OR</span> SEDATE IT</h2> */}
+                    <h2>{item?.text1}</h2>
+                    {/* <p>
                       In case of an emergency situation tagway provides important
                       information through QR scanning to save as many lives or products as possible.
+                    </p> */}
+                    <p>
+                    {item?.text2}
                     </p>
                   </div>
                 </div>
@@ -249,16 +255,20 @@ const { data: sliderData } = useGetAllSliderImagesQuery();
           <p>In this life saving application you can store all of your medical history, medication, doctor and insurance details.</p>
         </div>
       </div> */}
-      {tagTextData?.data?.map((item) => (
-        <div key={item?.id}
-        className="col-md-4">
-        <div className="feature-card">
-          {/* <div className="icon">{item.icon}</div> */}
-          <h5>{item?.title}</h5>
-          <p>{item?.text}</p>
-        </div>
-      </div>
-      ))}
+  {tagTextData?.data?.slice(0, 3).map((item, index) => (
+  <div key={item.id} className="col-md-4">
+    <div className="feature-card">
+
+      {/* ✅ Static icon */}
+      <div className="icon">{icons[index]}</div>
+
+      {/* ✅ Dynamic content */}
+      <h5>{item.title}</h5>
+      <p>{item.text}</p>
+
+    </div>
+  </div>
+))}
 
     </div>
 

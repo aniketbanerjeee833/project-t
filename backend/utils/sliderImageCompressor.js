@@ -1,3 +1,7 @@
+import sharp from "sharp";
+import fs from "fs";
+import path from "path";
+
 const compressSliderImage = async (filePath, folder = "admin/slider_image") => {
   const fileName = `${Date.now()}-${Math.floor(Math.random() * 9999)}.jpg`;
 
@@ -11,7 +15,7 @@ const compressSliderImage = async (filePath, folder = "admin/slider_image") => {
   const outputPath = `${outputDir}/${fileName}`;
 
   await sharp(filePath)
-    .jpeg({ quality: 40 })
+    .jpeg({ quality: 80 })
     .toFile(outputPath);
 
   // delete original uploaded file

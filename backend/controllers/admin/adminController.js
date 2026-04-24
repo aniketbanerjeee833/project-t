@@ -356,4 +356,6 @@ const getAllContactUs = async (req, res, next) => {
     if (connection) connection.release(); // ✅ important
   }
 };
+
+
 export { adminLogin, adminLogout, getUser, getAllContactUs };

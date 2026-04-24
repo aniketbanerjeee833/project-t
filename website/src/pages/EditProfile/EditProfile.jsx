@@ -5,14 +5,17 @@ import {
   useAddInsuranceMutation,
   useAddMedicationMutation, useDeleteAllergyMutation, useDeleteConditionMutation, useDeleteEmergencyContactMutation, useDeleteInsuranceMutation, useDeleteMedicationMutation, useEditAddressMutation, useEditAllergyMutation, useEditConditionMutation, useEditEmergencyContactMutation, useEditInsuranceMutation, useEditMedicationMutation, useEditProfileImageMutation, useEditProfileMutation, useGetIndividualProfileByIdQuery,
   useLinkProductToQRMutation,
+  useSendEmergencyContactOTPMutation,
   useUnlinkProductFromQRMutation,
   useUpdateViewOrHideDataMutation,
+  useVerifyOTPEmergencyContactMutation,
 
 } from "../../redux/api/profileApi";
 import CommonProfileModal from "../../components/Modal/CommonProfileModal";
 import { useState } from "react";
 import { useEffect } from "react";
 import { toast } from "react-toastify";
+
 
 
 export default function EditProfile() {
@@ -61,7 +64,10 @@ export default function EditProfile() {
   const [emergencyData, setEmergencyData] = useState(null);
 
   const [formData, setFormData] = useState({});
-
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [selectedEmailRow, setSelectedEmailRow] = useState(null);
+  //const [otpSent, setOtpSent] = useState(false);
   const [linkProductToQR] = useLinkProductToQRMutation();
   const [unlinkProductFromQR, { isLoading: isUnlinkProductLoading }] = useUnlinkProductFromQRMutation(); // reuse editProfile for unlinking since it's a PATCH
   const [saveMedication] = useAddMedicationMutation();
@@ -70,7 +76,7 @@ export default function EditProfile() {
 
   const [editInformation] = useEditProfileMutation();
 
-  const[updateViewStatus]=useUpdateViewOrHideDataMutation();
+  const [updateViewStatus] = useUpdateViewOrHideDataMutation();
 
   const [addEmergency] = useAddEmergencyContactMutation();
   const [editEmergency] = useEditEmergencyContactMutation();
@@ -89,11 +95,102 @@ export default function EditProfile() {
   const [deleteInsurance] = useDeleteInsuranceMutation();
   const [deleteCondition] = useDeleteConditionMutation();
 
+  const [sendEmergencyContactOTP, { isLoading: isSendEmergencyContactOTPLoading }] = useSendEmergencyContactOTPMutation()
+  const [verifyOTPEmergencyContact, { isLoading: isVerifyEmergencyContactOTPLoading }] = useVerifyOTPEmergencyContactMutation();
+  //const[verifyEmergencyContactOTP,{isLoading:isVerifyEmergencyContactOTPLoading}]=useSendEmergencyContactOTPMutation()
+  //   const handleSendOtp = async () => {
+  //   try {
+  //     // 🔥 CALL API
+  //     // await sendOtp({ email: selectedEmailRow.email }).unwrap();
+
+  //     //toast.success("OTP sent successfully 📩");
+  //     setOtpSent(true); // 👈 IMPORTANT
+
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast.error("Failed to send OTP ❌");
+  //   }
+  // };
+const [otpSent, setOtpSent] = useState(false);
+  // const handleVerifyEmail = async (row) => {
+  //   if (!row?.email) {
+  //     toast.error("Email not available");
+  //     return;
+  //   }
+
+  //   // ✅ 1. OPEN MODAL IMMEDIATELY
+  //   setSelectedEmailRow(row);
+  //   setShowOtpModal(true);
+
+  //   try {
+  //     // ✅ 2. SEND OTP IN BACKGROUND
+  //     const res = await sendEmergencyContactOTP({
+  //       email: row.email,
+  //     }).unwrap();
+
+  //     if (res.success) {
+  //       toast.success("OTP sent to email 📩");
+  //     }
+
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast.error(err?.data?.message || "Failed to send OTP ❌");
+  //   }
+  // };
+const handleVerifyEmail = async (row) => {
+  if (!row?.email) {
+    toast.error("Email not available");
+    return;
+  }
+
+  setSelectedEmailRow(row);
+  setShowOtpModal(true);
+  setOtpSent(false); // reset
+
+  try {
+    const res = await sendEmergencyContactOTP({
+      email: row.email,
+    }).unwrap();
+
+    if (res.success) {
+      toast.success("OTP sent to email 📩");
+      setOtpSent(true); // ✅ mark sent
+    }
+
+  } catch (err) {
+    console.error(err);
+    toast.error(err?.data?.message || "Failed to send OTP ❌");
+    setShowOtpModal(false); // optional
+  }
+};
+  const handleSubmitOtp = async () => {
+    try {
+      // 🔥 CALL API
+      // await verifyOtp({ email: selectedEmailRow.email, otp }).unwrap();
+
+      //toast.success("Email verified ✅");
+      const res = await verifyOTPEmergencyContact({ email: selectedEmailRow.email, otp }).unwrap();
+      if (res.success) {
+        toast.success("Email verified ✅");
+        setShowOtpModal(false);
+        setOtp("");
+      }
+
+      //setOtpSent(false);
+
+      await refetch(); // refresh UI
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Invalid OTP ");
+    }
+  };
+
   const handleUpdateViewStatus = async (id) => {
     try {
-      const res=await updateViewStatus( id).unwrap();
-      if(res.success){
-        toast.success(res.message||"View status updated");
+      const res = await updateViewStatus(id).unwrap();
+      if (res.success) {
+        toast.success(res.message || "View status updated");
       }
       // refetch();
     } catch (error) {
@@ -184,6 +281,7 @@ export default function EditProfile() {
   const emergencyContactFields = [
 
     { name: "mobile", placeholder: "Enter Emergency Contact Mobile Number" },
+    { name: "email", placeholder: "Enter Emergency Contact Email" },
   ];
 
   // ── 2. Two separate save handlers ───────────────────────────────────
@@ -204,8 +302,8 @@ export default function EditProfile() {
     { name: "frequency_time", placeholder: "Frequency Time" },
   ];
   const insuranceFields = [
-    { name: "insurance_name", placeholder: "Insurance Name" },
-    { name: "insurance_notes", placeholder: "Insurance Notes" },
+    { name: "insurance_name", placeholder: "Insurance Company Name" },
+    { name: "insurance_notes", placeholder: "Insurance Company Notes" },
   ];
   const conditionFields = [
     { name: "condition_name", placeholder: "Condition Name" },
@@ -483,10 +581,10 @@ export default function EditProfile() {
     }
   };
 
-  const handleAddEmergency = () => {
-    setEditingItem(null);
-    setFormData({ mobile: "" });
-  };
+  // const handleAddEmergency = () => {
+  //   setEditingItem(null);
+  //   setFormData({ mobile: "", email: "" });
+  // };
 
   const handleEditEmergency = (row) => {
     setEditingItem({ section: "emergency", data: row });
@@ -582,101 +680,101 @@ export default function EditProfile() {
     } catch (err) { console.error("Condition Save Error:", err); }
   };
 
-    const handleDeleteEmergency = async (rowId) => {
-  const confirmDelete = window.confirm("Are you sure you want to delete this item?");
+  const handleDeleteEmergency = async (rowId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this item?");
 
-  if (!confirmDelete) return;
+    if (!confirmDelete) return;
 
-  try {
-    await deleteEmergency(rowId).unwrap();
-    toast.success("Emergency contact deleted successfully ✅");
-    await refetch();
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to delete emergency contact ❌");
-  }
-};
+    try {
+      await deleteEmergency(rowId).unwrap();
+      toast.success("Emergency contact deleted successfully ✅");
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete emergency contact ❌");
+    }
+  };
   const handleDeleteAllergy = async (rowId) => {
-  const confirmDelete = window.confirm("Are you sure you want to delete this allergy?");
-  if (!confirmDelete) return;
+    const confirmDelete = window.confirm("Are you sure you want to delete this allergy?");
+    if (!confirmDelete) return;
 
-  try {
-    await deleteAllergy(rowId).unwrap();
-    toast.success("Allergy deleted successfully ✅");
-    await refetch();
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to delete allergy ❌");
-  }
-};
+    try {
+      await deleteAllergy(rowId).unwrap();
+      toast.success("Allergy deleted successfully ✅");
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete allergy ❌");
+    }
+  };
 
-const handleDeleteMedication = async (rowId) => {
-  const confirmDelete = window.confirm("Are you sure you want to delete this medication?");
-  if (!confirmDelete) return;
+  const handleDeleteMedication = async (rowId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this medication?");
+    if (!confirmDelete) return;
 
-  try {
-    await deleteMedication(rowId).unwrap();
-    toast.success("Medication deleted successfully ✅");
-    await refetch();
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to delete medication ❌");
-  }
-};
+    try {
+      await deleteMedication(rowId).unwrap();
+      toast.success("Medication deleted successfully ✅");
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete medication ❌");
+    }
+  };
 
-const handleDeleteInsurance = async (rowId) => {
-  const confirmDelete = window.confirm("Are you sure you want to delete this insurance?");
-  if (!confirmDelete) return;
+  const handleDeleteInsurance = async (rowId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this insurance?");
+    if (!confirmDelete) return;
 
-  try {
-    await deleteInsurance(rowId).unwrap();
-    toast.success("Insurance deleted successfully ✅");
-    await refetch();
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to delete insurance ❌");
-  }
-};
+    try {
+      await deleteInsurance(rowId).unwrap();
+      toast.success("Insurance deleted successfully ✅");
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete insurance ❌");
+    }
+  };
 
-const handleDeleteCondition = async (rowId) => {
-  const confirmDelete = window.confirm("Are you sure you want to delete this condition?");
-  if (!confirmDelete) return;
+  const handleDeleteCondition = async (rowId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this condition?");
+    if (!confirmDelete) return;
 
-  try {
-    await deleteCondition(rowId).unwrap();
-    toast.success("Condition deleted successfully ✅");
-    await refetch();
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to delete condition ❌");
-  }
-};
-const handleDeleteInstruction = async (rowId) => {
-  const confirmDelete = window.confirm("Are you sure you want to delete this instruction?");
-  if (!confirmDelete) return;
+    try {
+      await deleteCondition(rowId).unwrap();
+      toast.success("Condition deleted successfully ✅");
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete condition ❌");
+    }
+  };
+  const handleDeleteInstruction = async (rowId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this instruction?");
+    if (!confirmDelete) return;
 
-  try {
-    await deleteCondition(rowId).unwrap(); // 🔥 FIX: was deleteCondition ❌
-    toast.success("Instruction deleted successfully ✅");
-    await refetch();
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to delete instruction ❌");
-  }
-};
-const handleDeleteVetDetail = async (rowId) => {
-  const confirmDelete = window.confirm("Are you sure you want to delete this vet detail?");
-  if (!confirmDelete) return;
+    try {
+      await deleteCondition(rowId).unwrap(); // 🔥 FIX: was deleteCondition ❌
+      toast.success("Instruction deleted successfully ✅");
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete instruction ❌");
+    }
+  };
+  const handleDeleteVetDetail = async (rowId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this vet detail?");
+    if (!confirmDelete) return;
 
-  try {
-    await deleteInsurance(rowId).unwrap();
-    toast.success("Vet detail deleted successfully ✅");
-    await refetch();
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to delete vet detail ❌");
-  }
-};
+    try {
+      await deleteInsurance(rowId).unwrap();
+      toast.success("Vet detail deleted successfully ✅");
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete vet detail ❌");
+    }
+  };
   // const handleDeleteAllergy = async (rowId) => { try { await deleteAllergy(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
   // const handleDeleteMedication = async (rowId) => { try { await deleteMedication(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
   // const handleDeleteInsurance = async (rowId) => { try { await deleteInsurance(rowId).unwrap(); await refetch(); } catch (err) { console.error(err); } };
@@ -848,13 +946,13 @@ const handleDeleteVetDetail = async (rowId) => {
                       objectFit: "cover",
                     }}
                   /> */}
-                  {/* <img
+                  <img
                     src={
                       selectedImage
                         ? URL.createObjectURL(selectedImage)   // ✅ preview
                         : individualProfile?.image
                           ? `http://localhost:4000/${individualProfile.image}` // ✅ backend image
-                          : "/assets/img/profile.jpg" // ✅ fallback
+                          : "/assets/img/logo.png" // ✅ fallback
                     }
                     alt="profile"
                     style={{
@@ -863,8 +961,8 @@ const handleDeleteVetDetail = async (rowId) => {
                       borderRadius: "50%",
                       objectFit: "cover",
                     }}
-                  /> */}
-                  <img
+                  />
+                  {/* <img
                     src={
                       selectedImage
                         ? URL.createObjectURL(selectedImage)   // ✅ preview
@@ -878,7 +976,7 @@ const handleDeleteVetDetail = async (rowId) => {
                       borderRadius: "50%",
                       objectFit: "cover",
                     }}
-                  />
+                  /> */}
 
                   {/* <div className="mt-3">
                     <input type="file" className="chooseimg mb-2" />
@@ -910,8 +1008,8 @@ const handleDeleteVetDetail = async (rowId) => {
                   {individualProfile?.profile !== "OTHER" && (
                     <p>
                       Your age: {getAge(individualProfile?.dob)}
-                      {capitalize(individualProfile?.city)}
-                      {capitalize(individualProfile?.state)}
+                      {/* {capitalize(individualProfile?.city)}
+                      {capitalize(individualProfile?.state)} */}
                     </p>
                   )}
                   {/* <h4 className="mt-3">{individualProfile?.name}</h4>
@@ -970,13 +1068,13 @@ const handleDeleteVetDetail = async (rowId) => {
                 <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "10px" }}>
                   <button
                     className="btn"
-                    onClick={()=>handleUpdateViewStatus(individualProfile?.id)}
+                    onClick={() => handleUpdateViewStatus(individualProfile?.id)}
                     style={{
-                      backgroundColor:individualProfile?.status==="0" ? "red" : "green",
+                      backgroundColor: individualProfile?.status === "0" ? "red" : "green",
                       color: "#fff"
                     }}
                   >
-                    {individualProfile?.status==="0" ? "Hide Data" : "View Data"}
+                    {individualProfile?.status === "0" ? "Hide Data" : "View Data"}
                   </button>
                 </div>
 
@@ -1091,21 +1189,78 @@ const handleDeleteVetDetail = async (rowId) => {
                   <div className="personaledit p-3 mb-4" style={{ border: "1px solid #eee", borderRadius: "10px" }}>
                     <h5 style={{ backgroundColor: "red", padding: "10px", color: "white" }}>
                       EMERGENCY CONTACTS
-                      <i
+                      {/* <i
                         className={`float-right ${emergencyData?.length > 0 ? "" : "fa fa-plus-square-o"}`}
                         data-bs-toggle="modal"
                         data-bs-target="#exampleModal2"
                         onClick={handleAddEmergency}
                         style={{ cursor: "pointer" }}
-                      ></i>
+                      ></i> */}
                     </h5>
 
-                    {emergencyData && emergencyData.map((row) => (
+                    {emergencyData && emergencyData?.map((row) => (
                       <div key={row.id}>
                         <div className="table-responsive">
                           <table className="table">
                             <tbody>
                               <tr><th>Mobile:</th><td>{row.mobile || "-"}</td></tr>
+                              {/* <tr>
+                                <th>Email:</th>
+                                <td>
+                                  {row.email || "-"}
+
+                                  {row?.email && row.status2 == "0" && (
+                                    <span style={{ marginLeft: "10px" }}>
+                                      {row.status2 == "0" ? (
+                                        // <button
+                                        //   className="btn btn-warning btn-sm"
+                                        //   onClick={() => handleVerifyEmail(row)}
+                                        // >
+                                        //   Verify
+                                        // </button>
+                                        <button
+                                        className="btn btn-warning btn-sm"
+                                          disabled={isSendEmergencyContactOTPLoading}
+                                          onClick={() => handleVerifyEmail(row)}
+                                        >
+                                          {isSendEmergencyContactOTPLoading ? "Sending..." : "Verify"}
+                                        </button>
+                                      ) : (
+                                        <span style={{ color: "green", fontWeight: "bold" }}>
+                                          ✔ Verified
+                                        </span>
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr> */}
+                              <tr>
+                                <th>Email:</th>
+                                <td>
+                                
+                                  {row.email || "-"}
+
+                                  {row?.email && (
+                                    <span style={{ marginLeft: "10px" }}>
+                                      {row.status2 == "0" ? (
+                                        <button
+                                          className="btn btn-warning btn-sm"
+                                          disabled={isSendEmergencyContactOTPLoading}
+                                          onClick={() => handleVerifyEmail(row)}
+                                        >
+                                          Verify
+                                          {/* {isSendEmergencyContactOTPLoading ? "Sending..." : "Verify"} */}
+                                        </button>
+                                      ) : (
+                                        <span style={{ color: "green", fontWeight: "bold" }}>
+                                          ✔ Verified
+                                        </span>
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                              {/* <tr><th>Email:</th><td>{row.email || "-"}</td></tr> */}
                             </tbody>
                           </table>
                         </div>
@@ -1127,112 +1282,18 @@ const handleDeleteVetDetail = async (rowId) => {
                     ))}
                   </div>
                 )}
-                {/* {individualProfile?.profile === "HUMAN" && 
-    <div className="personaledit p-3 mb-4" style={{ border: "1px solid #eee", borderRadius: "10px" }}>
-      <h5>
-        EMERGENCY CONTACTS
-        
-          <i
-            className={`float-right ${hasEmergency ? "fa fa-pencil-square" : "fa fa-plus-square-o"}`}
-          data-bs-toggle="modal"
-          data-bs-target="#exampleModal2"
-        ></i>
-      
-    </h5>
 
-    {hasEmergency && (
-      <div className="table-responsive">
-        <table className="table">
-          <tbody>
-           
-            <tr><th>Mobile:</th><td>-</td></tr>
-           
-          </tbody>
-        </table>
-      </div>
-    )}
-  </div>} */}
-                {/* {individualProfile?.profile === "PET" && 
-    <div className="personaledit p-3 mb-4" style={{ border: "1px solid #eee", borderRadius: "10px" }}>
-      <h5>
-        PET OWNERS
-       
-          <i
-            className={`float-right ${hasPetOwners ? "fa fa-pencil-square" : "fa fa-plus-square-o"}`}
-          data-bs-toggle="modal"
-          data-bs-target="#exampleModal2"
-        ></i>
-      
-    </h5>
-
-    {hasPetOwners && (
-      <div className="table-responsive">
-        <table className="table">
-          <tbody>
-            <tr><th>Name:</th><td>-</td></tr>
-            <tr><th>Relationship:</th><td>-</td></tr>
-            <tr><th>Mobile:</th><td>-</td></tr>
-            <tr><th>Alt Mobile:</th><td>-</td></tr>
-            <tr><th>Email:</th><td>-</td></tr>
-            <tr><th>Emergency Email:</th><td>-</td></tr>
-          </tbody>
-        </table>
-      </div>
-    )}
-  </div>} */}
-                {/* {individualProfile?.profile === "PET" && (
-  <div className="personaledit p-3 mb-4" style={{ border: "1px solid #eee", borderRadius: "10px" }}>
-    <h5>
-      PET OWNERS
-      <i
-        className={`float-right ${"fa fa-plus-square-o"}`}
-        data-bs-toggle="modal"
-        data-bs-target="#exampleModalPetOwner"
-        //onClick={handleAddPetOwner}
-        style={{ cursor: "pointer" }}
-      ></i>
-    </h5>
- 
-    {petOwnerData && petOwnerData.map((row) => (
-      <div key={row.id}>
-        <div className="table-responsive">
-          <table className="table">
-            <tbody>
-              <tr><th>Name:</th><td>{row.name || "-"}</td></tr>
-              <tr><th>Relationship:</th><td>{row.relationship || "-"}</td></tr>
-              <tr><th>Mobile:</th><td>{row.mobile || "-"}</td></tr>
-              <tr><th>Alt Mobile:</th><td>{row.alt_mobile || "-"}</td></tr>
-              <tr><th>Email:</th><td>{row.email || "-"}</td></tr>
-              <tr><th>Emergency Email:</th><td>{row.emergency_email || "-"}</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="text-right">
-          <i className="fa fa-trash mr-2" style={{ cursor: "pointer" }} >
-          {/* // onClick={() => handleDeletePetOwner(row.id)} *
-
-          </i>
-          <i className="fa fa-pencil-square" style={{ cursor: "pointer" }}
-           data-bs-toggle="modal" data-bs-target="#exampleModalPetOwner" 
-           //</div>onClick={() => handleEditPetOwner(row)}
-           >
-           </i>
-        </div>
-      </div>
-    ))}
-  </div>
-)} */}
                 {individualProfile?.profile === "PET" && (
                   <div className="personaledit p-3 mb-4" style={{ border: "1px solid #eee", borderRadius: "10px" }}>
                     <h5 style={{ backgroundColor: "red", padding: "10px", color: "white" }}>
                       PET OWNERS
-                      <i
+                      {/* <i
                         className={`float-right ${emergencyData?.length > 0 ? "" : "fa fa-plus-square-o"}`}
                         data-bs-toggle="modal"
                         data-bs-target="#exampleModalPetOwner"
                         onClick={handleAddEmergency}
                         style={{ cursor: "pointer" }}
-                      ></i>
+                      ></i> */}
                     </h5>
 
                     {emergencyData && emergencyData.map((row) => (
@@ -1243,7 +1304,63 @@ const handleDeleteVetDetail = async (rowId) => {
                               <tr><th>Name:</th><td>{row.name || "-"}</td></tr>
                               <tr><th>Relationship:</th><td>{row.relation || "-"}</td></tr>
                               <tr><th>Mobile:</th><td>{row.mobile || "-"}</td></tr>
-                              <tr><th>Email:</th><td>{row.email || "-"}</td></tr>
+                              {/* <tr><th>Email:</th><td>{row.email || "-"}</td></tr> */}
+                              {/* <tr>
+                                <th>Email:</th>
+                                <td>
+                                  {row.email || "-"}
+
+                                  {row.status2 == "0" && (
+                                    <span style={{ marginLeft: "10px" }}>
+                                      {row.status2 == "0" ? (
+                                        // <button
+                                        //   className="btn btn-warning btn-sm"
+                                        // // onClick={() => handleVerifyEmail(row)}
+                                        // >
+                                        //   Verify
+                                        // </button>
+                                        <button
+                                          className="btn btn-warning btn-sm"
+                                          disabled={isSendEmergencyContactOTPLoading}
+                                          onClick={() => handleVerifyEmail(row)}
+                                        >
+                                          {isSendEmergencyContactOTPLoading ? "Sending..." : "Verify"}
+                                        </button>
+                                      ) : (
+                                        <span style={{ color: "green", fontWeight: "bold" }}>
+                                          ✔ Verified
+                                        </span>
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr> */}
+                              <tr>
+                                <th>Email:</th>
+                                <td>
+
+                                  {row.email || "-"}
+
+                                  {row?.email && (
+                                    <span style={{ marginLeft: "10px" }}>
+                                      {row.status2 == "0" ? (
+                                        <button
+                                          className="btn btn-warning btn-sm"
+                                          disabled={isSendEmergencyContactOTPLoading}
+                                          onClick={() => handleVerifyEmail(row)}
+                                        >
+                                          Verify
+                                          {/* {isSendEmergencyContactOTPLoading ? "Sending..." : "Verify"} */}
+                                        </button>
+                                      ) : (
+                                        <span style={{ color: "green", fontWeight: "bold" }}>
+                                          ✔ Verified
+                                        </span>
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
                             </tbody>
                           </table>
                         </div>
@@ -1270,22 +1387,78 @@ const handleDeleteVetDetail = async (rowId) => {
                   <div className="personaledit p-3 mb-4" style={{ border: "1px solid #eee", borderRadius: "10px" }}>
                     <h5 style={{ backgroundColor: "red", padding: "10px", color: "white" }}>
                       EMERGENCY CONTACTS
-                      <i
+                      {/* <i
                         className={`float-right ${emergencyData?.length > 0 ? "" : "fa fa-plus-square-o"}`}
                         data-bs-toggle="modal"
                         data-bs-target="#exampleModal2Other"
                         onClick={handleAddEmergency}
                         style={{ cursor: "pointer" }}
-                      ></i>
+                      ></i> */}
                     </h5>
 
-                    {emergencyData && emergencyData.map((row) => (
+                    {emergencyData && emergencyData?.map((row) => (
                       <div key={row.id}>
                         <div className="table-responsive">
                           <table className="table">
                             <tbody>
                               <tr><th>Mobile:</th><td>{row.mobile || "-"}</td></tr>
-                              <tr><th>Email:</th><td>{row.email || "-"}</td></tr>
+                              {/* <tr><th>Email:</th><td>{row.email || "-"}</td></tr> */}
+                              {/* <tr>
+                                <th>Email:</th>
+                                <td>
+                                  {row.email || "-"}
+
+                                  {row.status2 == "0" && (
+                                    <span style={{ marginLeft: "10px" }}>
+                                      {row.status2 === "0" ? (
+                                        // <button
+                                        //   className="btn btn-warning btn-sm"
+                                        // // onClick={() => handleVerifyEmail(row)}
+                                        // >
+                                        //   Verify
+                                        // </button>
+                                        <button
+                                          className="btn btn-warning btn-sm"
+                                          disabled={isSendEmergencyContactOTPLoading}
+                                          onClick={() => handleVerifyEmail(row)}
+                                        >
+                                          {isSendEmergencyContactOTPLoading ? "Sending..." : "Verify"}
+                                        </button>
+                                      ) : (
+                                        <span style={{ color: "green", fontWeight: "bold" }}>
+                                          ✔ Verified
+                                        </span>
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr> */}
+                              <tr>
+                                <th>Email:</th>
+                                <td>
+
+                                  {row.email || "-"}
+
+                                  {row?.email && (
+                                    <span style={{ marginLeft: "10px" }}>
+                                      {row.status2 == "0" ? (
+                                        <button
+                                          className="btn btn-warning btn-sm"
+                                          disabled={isSendEmergencyContactOTPLoading}
+                                          onClick={() => handleVerifyEmail(row)}
+                                        >
+                                          Verify
+                                          {/* {isSendEmergencyContactOTPLoading ? "Sending..." : "Verify"} */}
+                                        </button>
+                                      ) : (
+                                        <span style={{ color: "green", fontWeight: "bold" }}>
+                                          ✔ Verified
+                                        </span>
+                                      )}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
                             </tbody>
                           </table>
                         </div>
@@ -2027,6 +2200,179 @@ const handleDeleteVetDetail = async (rowId) => {
         setFormData={setFormData}
         onSave={handleSaveCondition}
       />
+      {/* {showOtpModal && (
+  <div className="modal show d-block" tabIndex="-1">
+    <div className="modal-dialog">
+      <div className="modal-content">
+
+        <div className="modal-header">
+          <h5 className="modal-title">Verify Email OTP</h5>
+          <button
+            style={{ cursor: "pointer", border: "none", backgroundColor: "transparent" }}
+            onClick={() => {
+              setShowOtpModal(false);
+              setOtpSent(false);
+            }}
+          >
+            X
+          </button>
+        </div>
+
+        <div className="modal-body">
+
+     
+          {!otpSent && (
+            <button
+              className="btn btn-primary w-100"
+              onClick={handleSendOtp}
+            >
+              Send OTP
+            </button>
+          )}
+
+        
+          {otpSent && (
+            <>
+              <input
+                type="text"
+                placeholder="Enter OTP"
+                className="form-control mb-2"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+              />
+            </>
+          )}
+
+        </div>
+
+        <div className="modal-footer">
+
+         
+          {otpSent && (
+            <button
+              className="btn btn-success"
+              // onClick={handleSubmitOtp}
+            >
+              Verify OTP
+            </button>
+          )}
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+)} */}
+      {/* {
+        showOtpModal && (
+          <div className="modal show d-block" tabIndex="-1">
+            <div className="modal-dialog">
+              <div className="modal-content">
+
+                <div className="modal-header">
+                  <h5 className="modal-title">Verify Email OTP</h5>
+                  <button
+                    style={{ cursor: "pointer", border: "none", backgroundColor: "transparent" }}
+                    onClick={() => {
+                      setShowOtpModal(false);
+                      //setOtpSent(false);
+                    }}
+                  >
+                    X
+                  </button>
+                </div>
+
+                <div className="modal-body">
+                  <input
+                    type="text"
+                    placeholder="Enter OTP sent to email"
+                    className="form-control"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                  />
+                </div>
+
+                <div className="modal-footer">
+                  <button
+                    className="btn btn-success"
+                    disabled={isVerifyEmergencyContactOTPLoading}
+                    onClick={handleSubmitOtp}
+                  >
+                    {isVerifyEmergencyContactOTPLoading ? "Verifying..." : "Verify OTP"}
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        )
+      } */}
+      {showOtpModal && (
+  <div className="modal show d-block" tabIndex="-1">
+    <div className="modal-dialog">
+      <div className="modal-content">
+
+        <div className="modal-header">
+          <h5 className="modal-title">Verify Email OTP</h5>
+          <button
+            style={{ cursor: "pointer", border: "none", backgroundColor: "transparent" }}
+            onClick={() => {
+              setShowOtpModal(false);
+              setOtp("");
+              setOtpSent(false);
+            }}
+          >
+            X
+          </button>
+        </div>
+
+        <div className="modal-body">
+
+          {/* 🔥 Step 1: Sending */}
+          {!otpSent && (
+            <p style={{ textAlign: "center" }}>
+              Sending OTP...
+            </p>
+          )}
+
+          {/* 🔥 Step 2: OTP Input */}
+          {otpSent && (
+            <>
+              <p style={{ color: "gray" }}>
+                OTP sent to your email
+              </p>
+
+              <input
+                type="text"
+                placeholder="Enter OTP"
+                className="form-control"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+              />
+            </>
+          )}
+
+        </div>
+
+        <div className="modal-footer">
+
+          {/* 🔥 Show button only after OTP sent */}
+          {otpSent && (
+            <button
+              className="btn btn-success"
+              disabled={isVerifyEmergencyContactOTPLoading}
+              onClick={handleSubmitOtp}
+            >
+              {isVerifyEmergencyContactOTPLoading ? "Verifying..." : "Verify OTP"}
+            </button>
+          )}
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
 
       {/* <!-- ##### profile Area End ##### --> */}
     </>

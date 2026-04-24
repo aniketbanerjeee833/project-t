@@ -119,6 +119,9 @@ export default function ViewProfileByTagId() {
                       {capitalize(individualProfile?.state)}
                     </p>
                   )}
+                  {/* <NavLink to={`/shop`}
+                    style={{backgroundColor:"#00ff00"}} 
+                   className="btn btn-primary">Shop</NavLink> */}
                 {/* <h4 className="mt-3">{individualProfile?.name}</h4>
                 <p>from {individualProfile?.city || "city"}, {individualProfile?.state || "state"}, INDIA</p> */}
               </div>
@@ -184,6 +187,7 @@ export default function ViewProfileByTagId() {
                       <table className="table">
                         <tbody>
                           <tr><th>Mobile:</th><td>{row.mobile || "-"}</td></tr>
+                          <tr><th>Email:</th><td>{row.email || "-"}</td></tr>
                         </tbody>
                       </table>
                     </div>

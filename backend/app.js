@@ -8,6 +8,8 @@
   import shopRoutes from "./routes/shopRoutes.js"
   import shippingAndPurchaseRoutes from "./routes/admin/shippingAndPurchaseRoutes.js"
   import homeRoutes from "./routes/admin/homeRoutes.js"
+  import  registeredMembersRoutes from "./routes/admin/registeredMembersRoutes.js"
+ 
 // import dashboardRoutes from "./routes/dashboardRoutes.js";
 // import partyRoutes from "./routes/partyRoutes.js";
 // import itemRoutes from "./routes/itemRoutes.js";
@@ -38,6 +40,8 @@ import path from "path";
 // import { Server } from "socket.io";   // <-- MUST COME FROM socket.io
 
  import { fileURLToPath } from "url";
+ import clearExpiredQr from "./utils/qrExpiryCron.js";
+
 
 // import dailyStockCarryForward from "./cron/dailyStockCarryForward.js";
 
@@ -168,8 +172,10 @@ const __dirname = path.dirname(__filename);
  app.use("/api/admin/qr",qrRoutes)
  app.use("/api/admin/product",productRoutes)
  app.use("/api/admin/shippingAndPurchase",shippingAndPurchaseRoutes)
+ app.use("/api/admin/registered-members",registeredMembersRoutes)
 
  app.use("/api/user/profile",profileRoutes)
+ 
 
 // app.use("/api/dashboard", dashboardRoutes);
 // app.use("/api/report", reportRoutes);
@@ -261,6 +267,7 @@ const PORT = process.env.PORT || 4000;
 // clearExpiredSessions();
 // clearExpiredLoginAttempts();
 // dailyStockCarryForward();
+ clearExpiredQr()
 app.listen(PORT, (err) => {
   if (err) {
     logger.error(`❌ Failed to start server on port ${PORT}`, err);

@@ -4,6 +4,9 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 
 
+
+
+
 export const userApi = createApi({
   reducerPath: "userApi",
   baseQuery: fetchBaseQuery({
@@ -52,6 +55,33 @@ export const userApi = createApi({
       invalidatesTags: ["User"],
     }),
 
+    sendOTP:builder.mutation({
+      query: (body) => ({
+        url: `user/send-otp`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["User"],
+    }),
+
+    verifyOTP:builder.mutation({
+      query: (body) => ({
+        url: `user/verify-otp`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["User"],
+    }),
+
+    changePassword:builder.mutation({
+      query: (body) => ({
+        url: `user/change-password`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["User"],
+    }),
+
 
   
   
@@ -66,5 +96,9 @@ export const {
  useRegisterUserMutation,
   useLoginUserMutation,
   useLogoutUserMutation,
-  useAddContactUsMutation
+  useAddContactUsMutation,
+
+  useSendOTPMutation,
+  useVerifyOTPMutation,
+  useChangePasswordMutation
 } = userApi;

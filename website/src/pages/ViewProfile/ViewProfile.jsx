@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { NavLink, useParams } from "react-router-dom";
 import { useGetIndividualProfileByIdQuery } from "../../redux/api/profileApi";
 
 export default function ViewProfile() {
@@ -65,8 +65,9 @@ export default function ViewProfile() {
 
     return `${years} years, ${months} months, ${days} days`;
   };
-  const capitalize = (str) =>
-  str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+
+  // const capitalize = (str) =>
+  // str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
   return (
     <>
       {/* Breadcrumb */}
@@ -96,7 +97,7 @@ export default function ViewProfile() {
                 className="editimg text-center p-4"
                 style={{ border: "1px solid #eee", borderRadius: "10px" }}
               >
-                <img
+                {/* <img
                 src={`http://localhost:4000/uploads/${individualProfile?.image}`}
                 //   src="/assets/img/profile.jpg"
                   style={{
@@ -105,7 +106,21 @@ export default function ViewProfile() {
                     borderRadius: "50%",
                     objectFit: "cover",
                   }}
-                />
+                /> */}
+                <img
+              src={
+               individualProfile?.image
+                  ? `http://localhost:4000/uploads/${individualProfile?.image}`
+                  : "/assets/img/logo.png"
+               
+              }
+                  style={{
+                    width: "120px",
+                    height: "120px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                  }}
+            />
                 <h4 className="mt-3">{individualProfile?.name}</h4>
 
                   {/* <p>
@@ -115,10 +130,17 @@ export default function ViewProfile() {
                   </p> */}
                   {individualProfile?.profile !=="OTHER" && (
                     <p>
-                      Your age: {getAge(individualProfile?.dob)} {capitalize(individualProfile?.city)}
-                      {capitalize(individualProfile?.state)}
+                      Your age: {getAge(individualProfile?.dob)} 
+                      {/* {capitalize(individualProfile?.city)}
+                      {capitalize(individualProfile?.state)} */}
                     </p>
                   )}
+                  {individualProfile?.date3 && 
+                  <p style={{color:"black"}}>Tag Valid Date : {individualProfile?.date3}</p>}
+                  <NavLink to={`/shop`}
+                  style={{backgroundColor:"#00ff00",color:"black"}} 
+                  className="btn btn-primary">Go To Shop</NavLink>
+                  {/* <button className="btn btn-primary">Shop</button> */}
                 {/* <h4 className="mt-3">{individualProfile?.name}</h4>
                 <p>from {individualProfile?.city || "city"}, {individualProfile?.state || "state"}, INDIA</p> */}
               </div>
@@ -184,6 +206,7 @@ export default function ViewProfile() {
                       <table className="table">
                         <tbody>
                           <tr><th>Mobile:</th><td>{row.mobile || "-"}</td></tr>
+                          <tr><th>Email:</th><td>{row.email || "-"}</td></tr>
                         </tbody>
                       </table>
                     </div>
