@@ -1,56 +1,65 @@
 import db from "../../config/db.js";
 
+
+
 // const getAllRegisteredMembers = async (req, res) => {
 //   let connection;
+
 //   try {
+//     connection = await db.getConnection();
+
 //     const page = parseInt(req.query.page) || 1;
 //     const limit = parseInt(req.query.limit) || 5;
 //     const search = req.query.search || "";
-
 //     const offset = (page - 1) * limit;
 
 //     let searchQuery = "";
 //     let values = [];
 
-//     // 🔍 search
+//     // 🔍 SEARCH (register + information)
 //     if (search) {
 //       searchQuery = `
 //         AND (
-//           name LIKE ? OR
-//           phone LIKE ? OR
-//           card_id LIKE ? OR
-//           date LIKE ?
+//           r.mobile LIKE ? OR
+//           OR r.name LIKE ? OR
+//           DATE_FORMAT(r.date, '%Y-%m-%d') LIKE ? OR
+//           i.name LIKE ? OR
+//           i.phone LIKE ? OR
+//           i.email LIKE ? OR
+//           i.card_id LIKE ?
 //         )
 //       `;
-//       values = [
-//         `%${search}%`,
-//         `%${search}%`,
-//         `%${search}%`,
-//         `%${search}%`,
-//       ];
+
+//       const like = `%${search}%`;
+
+//       values = [like, like, like, like, like, like, like];
 //     }
 
-//     connection = await db.getConnection();
-
-//     // ✅ MAIN QUERY
-//     const [rows] = await connection.query(
+//     // ✅ MAIN QUERY (ONLY USERS, DISTINCT to avoid duplicates)
+//     const [users] = await connection.query(
 //       `
-//       SELECT id, name, phone, card_id, DATE_FORMAT(date, '%Y-%m-%d ') AS date
-//       FROM information
-     
+//       SELECT DISTINCT 
+//         r.id,
+//         r.mobile,
+//         r.name,
+//         DATE_FORMAT(r.date, '%Y-%m-%d') AS date
+//       FROM register r
+//       LEFT JOIN information i ON r.id = i.register_id
+//       WHERE 1=1
 //       ${searchQuery}
-//       ORDER BY id DESC
+//       ORDER BY r.id DESC
 //       LIMIT ? OFFSET ?
 //       `,
 //       [...values, limit, offset]
 //     );
 
-//     // ✅ COUNT QUERY
+//     // ✅ COUNT QUERY (IMPORTANT: DISTINCT)
 //     const [countResult] = await connection.query(
 //       `
-//       SELECT COUNT(*) AS total
-//       FROM information
-     
+//       SELECT COUNT( DISTINCT  r.id) AS total
+//       FROM register r
+//       LEFT JOIN information i ON r.id = i.register_id
+//       WHERE 1=1
 //       ${searchQuery}
 //       `,
 //       values
@@ -60,7 +69,7 @@ import db from "../../config/db.js";
 
 //     return res.json({
 //       success: true,
-//       data: rows,
+//       data: users, // 🔥 still only users (profiles fetched separately)
 //       pagination: {
 //         total,
 //         limit,
@@ -70,6 +79,8 @@ import db from "../../config/db.js";
 //     });
 
 //   } catch (err) {
+//     console.error("getAllRegisteredMembers error:", err);
+
 //     return res.status(500).json({
 //       success: false,
 //       error: err.message,
@@ -90,52 +101,67 @@ const getAllRegisteredMembers = async (req, res) => {
     const search = req.query.search || "";
     const offset = (page - 1) * limit;
 
-    let searchQuery = "";
+    let searchCondition = "";
     let values = [];
 
-    // 🔍 SEARCH (register + information)
     if (search) {
-      searchQuery = `
+      const like = `%${search}%`;
+
+      searchCondition = `
         AND (
           r.mobile LIKE ? OR
+          r.name LIKE ? OR
           DATE_FORMAT(r.date, '%Y-%m-%d') LIKE ? OR
-          i.name LIKE ? OR
-          i.phone LIKE ? OR
-          i.email LIKE ? OR
-          i.card_id LIKE ?
+          EXISTS (
+            SELECT 1
+            FROM information i
+            WHERE i.register_id = r.id
+            AND (
+              i.name LIKE ? OR
+              i.phone LIKE ? OR
+              i.email LIKE ? OR
+              i.card_id LIKE ?
+            )
+          )
         )
       `;
 
-      const like = `%${search}%`;
-
-      values = [like, like, like, like, like, like];
+      values = [like, like, like, like, like, like, like];
     }
 
-    // ✅ MAIN QUERY (ONLY USERS, DISTINCT to avoid duplicates)
+    // ✅ CTE Query
     const [users] = await connection.query(
       `
-      SELECT DISTINCT 
-        r.id,
-        r.mobile,
-        DATE_FORMAT(r.date, '%Y-%m-%d') AS date
-      FROM register r
-      LEFT JOIN information i ON r.id = i.register_id
-      WHERE 1=1
-      ${searchQuery}
-      ORDER BY r.id DESC
+      WITH filtered_users AS (
+        SELECT 
+          r.id,
+          r.mobile,
+          r.name,
+          DATE_FORMAT(r.date, '%Y-%m-%d') AS date
+        FROM register r
+        WHERE 1=1
+        ${searchCondition}
+      )
+
+      SELECT *
+      FROM filtered_users
+      ORDER BY id DESC
       LIMIT ? OFFSET ?
       `,
       [...values, limit, offset]
     );
 
-    // ✅ COUNT QUERY (IMPORTANT: DISTINCT)
+    // ✅ Count using same CTE logic
     const [countResult] = await connection.query(
       `
-      SELECT COUNT(DISTINCT r.id) AS total
-      FROM register r
-      LEFT JOIN information i ON r.id = i.register_id
-      WHERE 1=1
-      ${searchQuery}
+      WITH filtered_users AS (
+        SELECT r.id
+        FROM register r
+        WHERE 1=1
+        ${searchCondition}
+      )
+
+      SELECT COUNT(*) AS total FROM filtered_users
       `,
       values
     );
@@ -144,7 +170,7 @@ const getAllRegisteredMembers = async (req, res) => {
 
     return res.json({
       success: true,
-      data: users, // 🔥 still only users (profiles fetched separately)
+      data: users,
       pagination: {
         total,
         limit,

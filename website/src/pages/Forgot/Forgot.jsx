@@ -7,7 +7,7 @@ import { useChangePasswordMutation, useSendOTPMutation, useVerifyOTPMutation } f
 
 
 export default function Forgot() {
-  const { register, handleSubmit, watch } = useForm();
+  const { register, handleSubmit, watch, trigger, formState: { errors } } = useForm();
   const formValues = watch();
   const navigate = useNavigate();
 
@@ -28,6 +28,9 @@ export default function Forgot() {
       toast.error("Enter mobile number first");
       return;
     }
+    const isValid = await trigger("mobile"); // 🔥 validate field
+
+  if (!isValid) return; // stop if invalid
 
     try {
       const res = await sendOTPApi({ mobile: formValues.mobile,type: "forgot" }).unwrap();
@@ -114,14 +117,39 @@ export default function Forgot() {
                 <form id="forgotForm" onSubmit={handleSubmit(onSubmit)}>
 
                   {/* <!-- Phone --> */}
-                  <input
+                  {/* <input
                     type="tel"
                     {...register("mobile")}
                     id="phone"
                     placeholder="Enter your Phone No."
                     required
                     disabled={otpSent}
-                  />
+                  /> */}
+                   <div>
+                  <input
+                      type="tel"
+                      name="mobile"
+                      maxLength={10}
+                      placeholder="Enter your Phone No."
+                      disabled={otpSent}
+                      {...register("mobile", {
+                        required: "Mobile number is required",
+                        pattern: {
+                          value: /^[6-9]\d{9}$/,
+                          message: "Enter a valid 10-digit mobile number",
+                        },
+                      })}
+
+                      onInput={(e) => {
+                        e.target.value = e.target.value.replace(/\D/g, ""); // 🔥 remove non-digits
+                      }}
+                    />
+                    {errors.mobile && (
+                      <p style={{ color: "red", fontSize: "13px", marginTop: "5px" }}>
+                        {errors.mobile.message}
+                      </p>
+                    )}
+                    </div>
                   {/* <!-- Send OTP --> */}
                   {!otpSent && <button type="button" className="otp-btn"
                     disabled={isSendingOTP}

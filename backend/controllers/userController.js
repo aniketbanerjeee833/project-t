@@ -20,13 +20,13 @@ const registerUser = async (req, res, next) => {
     //   });
     // }
 
-    const { mobile, password } = req.body;
+    const { name, mobile, password } = req.body;
 
     // ✅ Basic validation
-    if (!mobile || !password) {
+    if (!mobile || !password || !name) {
       return res.status(400).json({
         success: false,
-        message: "Mobile and password are required",
+        message: "Mobile, name, and password are required",
       });
     }
 
@@ -54,11 +54,13 @@ const registerUser = async (req, res, next) => {
     /* ---------------- INSERT USER ---------------- */
     await connection.query(
       `INSERT INTO register
-       (mobile, password,  date)
-       VALUES (?, ?,  NOW())`,
+       (mobile, password, name,  date)
+       VALUES (?, ?,?,  NOW())`,
       [
         mobile,
+        
         hashedPassword,
+        name
    
       ]
     );

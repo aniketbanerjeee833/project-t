@@ -203,9 +203,10 @@ export default function Footer() {
           <p>
             © {new Date().getFullYear()} TAGWAY | All Rights Reserved. Designed
             & Developed by{" "}
-            <a href="#" target="_blank" rel="noreferrer">
+            {/* <a href="#" target="_blank" rel="noreferrer">
               Techpromind
-            </a>
+            </a> */}
+            <NavLink to="#" target="_blank"  rel="noreferrer">Techpromind</NavLink>
           </p>
         </div>
 

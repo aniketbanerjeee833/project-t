@@ -112,6 +112,7 @@ export default function Contact() {
     register,
     handleSubmit,
     reset,
+    formState: { errors },
   } = useForm();
 
   const [addContactUs, { isLoading }] = useAddContactUsMutation();
@@ -197,13 +198,39 @@ export default function Contact() {
                         />
                       </div>
 
-                      <div className="col-lg-12">
+                      {/* <div className="col-lg-12">
                         <input
                           type="tel"
                           {...register("ph", { required: true })}
                           placeholder="Enter Phone Number"
                         />
-                      </div>
+                      </div> */}
+                      <div className="col-lg-12">
+                    <input
+                      type="tel"
+                      name="ph"
+                      maxLength={10}
+                      placeholder="Enter your Phone No."
+
+                      {...register("ph", {
+                        required: "Mobile number is required",
+                        pattern: {
+                          value: /^[6-9]\d{9}$/,
+                          message: "Enter a valid 10-digit mobile number",
+                        },
+                      })}
+
+                      onInput={(e) => {
+                        e.target.value = e.target.value.replace(/\D/g, ""); // 🔥 remove non-digits
+                      }}
+                    />
+
+                    {errors.ph && (
+                      <p style={{ color: "red", fontSize: "13px", marginTop: "5px" }}>
+                        {errors.ph.message}
+                      </p>
+                    )}
+                  </div>
 
                       <div className="col-lg-12">
                         <textarea

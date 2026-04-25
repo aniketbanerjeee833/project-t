@@ -18,7 +18,7 @@ export default function Login() {
     handleSubmit,
 
     watch,
-
+    formState: { errors },
 
   } = useForm()
 
@@ -70,17 +70,56 @@ export default function Login() {
 
                 <h4>LOGIN</h4>
 
-                 <form onSubmit={handleSubmit(onSubmit)}
-  style={{ textAlign: "left", width: "100%" }}>
+                <form onSubmit={handleSubmit(onSubmit)}
+                  style={{ textAlign: "left", width: "100%" }}>
+                  {/* <div>
+                    <input type="tel" name="number" 
+                    maxLength={10}
+                    placeholder="Enter your Phone No."
+                      {...register("mobile", {
+                        required: "Mobile number is required",
+                        pattern: {
+                          value: /^[6-9]\d{9}$/,
+                          message: "Enter a valid 10-digit mobile number",
+                        },
+                      })}
+                      required />
+                    {errors.mobile && (
+                      <p style={{ color: "red", fontSize: "13px", marginTop: "5px" }}>
+                        {errors.mobile.message}
+                      </p>
+                    )}
+                  </div> */}
+                  <div>
+                    <input
+                      type="tel"
+                      name="number"
+                      maxLength={10}
+                      placeholder="Enter your Phone No."
 
-                  <input type="tel" name="number" placeholder="Enter your Phone No."
-                    {...register("mobile")}
-                    required />
+                      {...register("mobile", {
+                        required: "Mobile number is required",
+                        pattern: {
+                          value: /^[6-9]\d{9}$/,
+                          message: "Enter a valid 10-digit mobile number",
+                        },
+                      })}
 
+                      onInput={(e) => {
+                        e.target.value = e.target.value.replace(/\D/g, ""); // 🔥 remove non-digits
+                      }}
+                    />
+
+                    {errors.mobile && (
+                      <p style={{ color: "red", fontSize: "13px", marginTop: "5px" }}>
+                        {errors.mobile.message}
+                      </p>
+                    )}
+                  </div>
                   {/* <input type="password" name="password" placeholder="Password" 
             {...register("password")}
             required/> */}
-                  <div className="form-group" style={{ textAlign: "left",color:"#919191" }}>
+                  <div className="form-group" style={{ textAlign: "left", color: "#919191" }}>
                     <input
                       type={showPassword ? "text" : "password"}
                       placeholder="Password"
@@ -96,15 +135,15 @@ export default function Login() {
                         marginTop: "6px",
                         fontSize: "14px",
                         cursor: "pointer",
-                        
+
                       }}
                     >
                       <input
-                   
+
                         type="checkbox"
                         checked={showPassword}
                         onChange={() => setShowPassword(prev => !prev)}
-                        style={{ marginRight: "6px", width: "6%",marginBottom:"0px",cursor:"pointer" }}
+                        style={{ marginRight: "6px", width: "6%", marginBottom: "0px", cursor: "pointer" }}
                       />
                       Show Password
                     </label>

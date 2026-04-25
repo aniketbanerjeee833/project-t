@@ -43,7 +43,12 @@ export default function Shop() {
         <div className="col-lg-7">
           <div className="producttext">
 
-            <h3>ID STICKER</h3>
+            <h3>ID STICKER 
+              (<span style={{fontSize:"18px"}}>
+                Get your Rs.199 TAGWAY Card FREE till June — enjoy 1 year validity at no cost!
+                </span>
+                )
+              </h3>
 
             <p>
               It keeps your important medical information handy, helping responders contact your loved ones 

@@ -391,6 +391,9 @@ export default function Profile() {
                             message: "Enter a valid 10-digit mobile number",
                           },
                         })}
+                          onInput={(e) => {
+                        e.target.value = e.target.value.replace(/\D/g, ""); // 🔥 remove non-digits
+                      }}
                       />
 
                       {errors.emergency_contact_number && (

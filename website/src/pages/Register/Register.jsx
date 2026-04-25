@@ -182,7 +182,7 @@ import { useGetAllRegisterImageQuery } from "../../redux/api/homeWebsiteApi";
 
 export default function Register() {
 
-  const { register, handleSubmit, watch } = useForm();
+  const { register, handleSubmit, watch, trigger, formState: { errors } } = useForm();
   const formValues = watch();
   const navigate = useNavigate();
 
@@ -202,14 +202,38 @@ export default function Register() {
 
 
   // ── send OTP ───────────────────────────────────────────────────────────────
+
+  // const sendOTP = async () => {
+  //   if (!formValues.mobile) {
+  //     toast.error("Enter mobile number first");
+  //     return;
+  //   }
+
+  //   try {
+  //     const res = await sendOTPApi({ mobile: formValues.mobile,   type: "register" }).unwrap();
+  //     if (res.success) {
+  //       setOtpSent(true);
+  //       toast.success(res.message || "OTP sent successfully");
+  //     }
+  //   } catch (err) {
+  //     toast.error(err?.data?.message || "Failed to send OTP");
+  //   }
+  // };
   const sendOTP = async () => {
-    if (!formValues.mobile) {
-      toast.error("Enter mobile number first");
-      return;
-    }
+    const isValid = await trigger("mobile"); // 🔥 validate field
+
+    if (!isValid) return; // stop if invalid
+    const isName = await trigger("name"); // 🔥 validate field
+
+    if (!isName) return; // stop if invalid
+
 
     try {
-      const res = await sendOTPApi({ mobile: formValues.mobile,   type: "register" }).unwrap();
+      const res = await sendOTPApi({
+        mobile: formValues.mobile,
+        type: "register"
+      }).unwrap();
+
       if (res.success) {
         setOtpSent(true);
         toast.success(res.message || "OTP sent successfully");
@@ -243,8 +267,11 @@ export default function Register() {
 
   // ── submit ─────────────────────────────────────────────────────────────────
   const onSubmit = async (data) => {
-    const { mobile, password, confirmPassword } = data;
-
+    const { name, mobile, password, confirmPassword } = data;
+    if (!name) {
+      toast.error("Name is required");
+      return;
+    }
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -256,7 +283,7 @@ export default function Register() {
     }
 
     try {
-      const response = await registerUser({ mobile, password }).unwrap();
+      const response = await registerUser({ name, mobile, password }).unwrap();
       if (response.success) {
         toast.success("Registered successfully");
         navigate("/login");
@@ -283,9 +310,9 @@ export default function Register() {
 
       <div className="login-area section-padding-100">
         <div className="container-fluid">
-          <div 
-          // style={{gap:"5px"}}
-          className="row">
+          <div
+            // style={{gap:"5px"}}
+            className="row">
             <div className="col-lg-3 col-md-3">
               {data[0] && (
                 <img
@@ -305,12 +332,57 @@ export default function Register() {
                 <form id="registerForm" onSubmit={handleSubmit(onSubmit)}>
 
                   {/* Mobile */}
-                  <input
+                  {/* <input
                     type="tel"
                     {...register("mobile")}
                     placeholder="Enter your Phone No."
                     required
-                  />
+                  /> */}
+                  <div>
+                    <input
+                      type="text"
+                      name="name"
+
+                      placeholder="Enter your Name"
+
+                      {...register("name", {
+                        required: "Name is required",
+                      })}
+
+
+                    />
+                    {errors.name && (
+                      <p style={{ color: "red", fontSize: "13px", marginTop: "5px" }}>
+                        {errors.name.message}
+                      </p>
+                    )}
+
+                  </div>
+                  <div>
+                    <input
+                      type="tel"
+                      name="mobile"
+                      maxLength={10}
+                      placeholder="Enter your Phone No."
+
+                      {...register("mobile", {
+                        required: "Mobile number is required",
+                        pattern: {
+                          value: /^[6-9]\d{9}$/,
+                          message: "Enter a valid 10-digit mobile number",
+                        },
+                      })}
+
+                      onInput={(e) => {
+                        e.target.value = e.target.value.replace(/\D/g, ""); // 🔥 remove non-digits
+                      }}
+                    />
+                    {errors.mobile && (
+                      <p style={{ color: "red", fontSize: "13px", marginTop: "5px" }}>
+                        {errors.mobile.message}
+                      </p>
+                    )}
+                  </div>
 
                   {/* Password */}
                   {/* <input
@@ -345,7 +417,7 @@ export default function Register() {
                         onChange={() => setShowPassword(prev => !prev)}
                         style={{ marginRight: "6px", width: "6%", marginBottom: "0px", cursor: "pointer" }}
                       />
-                      Show Confirm Password
+                      Show  Password
                     </label>
                   </div>
 
@@ -382,7 +454,7 @@ export default function Register() {
                         onChange={() => setShowConfirmPassword(prev => !prev)}
                         style={{ marginRight: "6px", width: "6%", marginBottom: "0px", cursor: "pointer" }}
                       />
-                      Show Password
+                      Show Confirm Password
                     </label>
                   </div>
                   {/* ── Send OTP button — show only before OTP sent ── */}
@@ -455,7 +527,7 @@ export default function Register() {
                 <img
                   src={`http://localhost:4000/uploads/${data[1].image}`}
                   alt="right"
-                  style={{ width: "100%",height:"100%" }}
+                  style={{ width: "100%", height: "100%" }}
                 />
               )}
             </div>

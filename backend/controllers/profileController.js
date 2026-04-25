@@ -1729,6 +1729,9 @@ const getIndividualProfileByTagId = async (req, res) => {
       `SELECT id FROM information WHERE card_id = ?`,
       [tagId]
     );
+    if(information.length === 0){
+      return res.status(404).json({ success: false, message: "Card Id not linked to any profile or profile not found" });
+    }
     const { id } = information[0];
 
     // ── 1. Main profile info ────────────────────────────────────────────────
@@ -1876,7 +1879,7 @@ const [infoRows] = await connection.query(
       emergency_contact: emergencyRows,
     };
 
-    return res.status(200).json({ data: response });
+    return res.status(200).json({success:true, data: response });
 
   } catch (err) {
     console.error("Get Profile Error:", err);
