@@ -1106,7 +1106,7 @@ const handleVerifyEmail = async (row) => {
                           weight: individualProfile?.weight || "",
                           identity: individualProfile?.identity || "",
                           blood_group: individualProfile?.blood_group || "",
-                          breed: individualProfile?.breed || "",
+                          breed: individualProfile?.email || "",
                         })
                       }
                     ></i>
