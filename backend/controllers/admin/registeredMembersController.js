@@ -645,5 +645,322 @@ const deleteRegisteredMember = async (req, res) => {
   }
 };
 
+// const customersRegisterdButTagNotPurchased=async(req,res)=>{
+//     try {
+//     connection = await db.getConnection();
 
-export { getAllRegisteredMembers, getProfilesByUser, assignTagToUser, disableAssignedTagToUser, deleteRegisteredMember };
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 5;
+//     const search = req.query.search || "";
+//     const offset = (page - 1) * limit;
+
+//     let searchCondition = "";
+//     let values = [];
+
+//     if (search) {
+//       const like = `%${search}%`;
+
+//       searchCondition = `
+//         AND (
+//           r.mobile LIKE ? OR
+//           r.name LIKE ? OR
+//           DATE_FORMAT(r.date, '%Y-%m-%d') LIKE ? OR
+//           EXISTS (
+//             SELECT 1
+//             FROM information i
+//             WHERE i.register_id = r.id
+//             AND (
+//               i.name LIKE ? OR
+//               i.phone LIKE ? OR
+//               i.email LIKE ? OR
+//               i.card_id LIKE ?
+//             )
+//           )
+//         )
+//       `;
+
+//       values = [like, like, like, like, like, like, like];
+//     }
+
+//     // ✅ CTE Query
+//     const [users] = await connection.query(
+//       `
+//    WITH filtered_users AS (
+//   SELECT r.id
+//   FROM register r
+//   INNER JOIN information i ON r.id = i.register_id
+//   WHERE 1=1
+//   ${searchCondition}
+//   AND i.card_id IS NOT NULL
+// )
+
+//       SELECT *
+//       FROM filtered_users
+//       ORDER BY id DESC
+//       LIMIT ? OFFSET ?
+//       `,
+//       [...values, limit, offset]
+//     );
+
+//     // ✅ Count using same CTE logic
+//     const [countResult] = await connection.query(
+//       `
+//       WITH filtered_users AS (
+//         SELECT r.id
+//         FROM register r
+//         WHERE 1=1
+//         ${searchCondition}
+//       )
+
+//       SELECT COUNT(*) AS total FROM filtered_users
+//       `,
+//       values
+//     );
+
+//     const total = countResult[0].total;
+
+//     return res.json({
+//       success: true,
+//       data: users,
+//       pagination: {
+//         total,
+//         limit,
+//         totalPages: Math.ceil(total / limit),
+//         currentPage: page,
+//       },
+//     });
+
+//   } catch (err) {
+//     console.error("getAllRegisteredMembers error:", err);
+
+//     return res.status(500).json({
+//       success: false,
+//       error: err.message,
+//     });
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// }
+// const customersHavingProfileButNoEmergencyContact = async (req, res) => {
+//   let connection;
+
+//   try {
+//     connection = await db.getConnection();
+
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 5;
+//     const search = req.query.search || "";
+//     const offset = (page - 1) * limit;
+
+//     let searchCondition = "";
+//     let values = [];
+
+//     // 🔍 Search logic
+//     if (search) {
+//       const like = `%${search}%`;
+
+//       searchCondition = `
+//         AND (
+//           r.mobile LIKE ? OR
+//           r.name LIKE ? OR
+//           DATE_FORMAT(r.date, '%Y-%m-%d') LIKE ? OR
+//           i.name LIKE ? OR
+//           i.phone LIKE ? OR
+//           i.email LIKE ? OR
+//           i.card_id LIKE ?
+//         )
+//       `;
+
+//       values = [like, like, like, like, like, like, like];
+//     }
+
+//     // ✅ MAIN QUERY (correct logic)
+//     const [users] = await connection.query(
+//       `
+//       WITH filtered_profiles AS (
+//   SELECT 
+//     r.id AS register_id,
+//     r.name AS register_name,
+//     r.mobile,
+//     i.id AS information_id,
+//     i.name AS profile_name,
+//     i.phone,
+//     i.email,
+//     DATE_FORMAT(r.date, '%Y-%m-%d') AS date
+//   FROM register r
+//   INNER JOIN information i 
+//     ON r.id = i.register_id   
+
+//   LEFT JOIN emergency_contact ec 
+//     ON i.id = ec.information_id
+
+//   WHERE ec.id IS NULL        
+//   ${searchCondition}
+// )
+
+// SELECT *
+// FROM filtered_profiles
+// ORDER BY register_id DESC
+// LIMIT ? OFFSET ?
+//       `,
+//       [...values, limit, offset]
+//     );
+
+//     // ✅ COUNT QUERY (must match EXACT logic)
+//     const [countResult] = await connection.query(
+//       `
+//     WITH filtered_profiles AS (
+//   SELECT i.id
+//   FROM register r
+//   INNER JOIN information i 
+//     ON r.id = i.register_id
+
+//   LEFT JOIN emergency_contact ec 
+//     ON i.id = ec.information_id
+
+//   WHERE ec.id IS NULL
+//   ${searchCondition}
+// )
+
+// SELECT COUNT(*) AS total FROM filtered_profiles
+//       `,
+//       values
+//     );
+
+//     const total = countResult[0].total;
+
+//     return res.json({
+//       success: true,
+//       data: users,
+//       pagination: {
+//         total,
+//         limit,
+//         totalPages: Math.ceil(total / limit),
+//         currentPage: page,
+//       },
+//     });
+
+//   } catch (err) {
+//     console.error("customersHavingProfileButNoEmergencyContact error:", err);
+
+//     return res.status(500).json({
+//       success: false,
+//       error: err.message,
+//     });
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
+
+// const customersHavingProfileButNoEmergencyContact = async (req, res) => {
+//   let connection;
+
+//   try {
+//     connection = await db.getConnection();
+
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 5;
+//     const search = req.query.search || "";
+//     const offset = (page - 1) * limit;
+
+//     let searchCondition = "";
+//     let values = [];
+
+//     // 🔍 Search logic
+//     if (search) {
+//       const like = `%${search}%`;
+
+//       searchCondition = `
+//         AND (
+//           r.mobile LIKE ? OR
+//           r.name LIKE ? OR
+//           DATE_FORMAT(r.date, '%Y-%m-%d') LIKE ? OR
+//           i.name LIKE ? OR
+//           i.phone LIKE ? OR
+//           i.email LIKE ? OR
+//           i.card_id LIKE ?
+//         )
+//       `;
+
+//       values = [like, like, like, like, like, like, like];
+//     }
+
+//     // ✅ MAIN QUERY (correct logic)
+//     const [users] = await connection.query(
+//       `
+//       WITH filtered_profiles AS (
+//   SELECT 
+//     r.id AS register_id,
+//     r.name AS register_name,
+//     r.mobile,
+//     i.id AS information_id,
+//     i.name AS profile_name,
+//     i.phone,
+//     i.email,
+//     DATE_FORMAT(r.date, '%Y-%m-%d') AS date
+//   FROM register r
+//   INNER JOIN information i 
+//     ON r.id = i.register_id   
+
+//   LEFT JOIN emergency_contact ec 
+//     ON i.id = ec.information_id
+
+//   WHERE ec.id IS NULL        
+//   ${searchCondition}
+// )
+
+// SELECT *
+// FROM filtered_profiles
+// ORDER BY register_id DESC
+// LIMIT ? OFFSET ?
+//       `,
+//       [...values, limit, offset]
+//     );
+
+//     // ✅ COUNT QUERY (must match EXACT logic)
+//     const [countResult] = await connection.query(
+//       `
+//     WITH filtered_profiles AS (
+//   SELECT i.id
+//   FROM register r
+//   INNER JOIN information i 
+//     ON r.id = i.register_id
+
+//   LEFT JOIN emergency_contact ec 
+//     ON i.id = ec.information_id
+
+//   WHERE ec.id IS NULL
+//   ${searchCondition}
+// )
+
+// SELECT COUNT(*) AS total FROM filtered_profiles
+//       `,
+//       values
+//     );
+
+//     const total = countResult[0].total;
+
+//     return res.json({
+//       success: true,
+//       data: users,
+//       pagination: {
+//         total,
+//         limit,
+//         totalPages: Math.ceil(total / limit),
+//         currentPage: page,
+//       },
+//     });
+
+//   } catch (err) {
+//     console.error("customersHavingProfileButNoEmergencyContact error:", err);
+
+//     return res.status(500).json({
+//       success: false,
+//       error: err.message,
+//     });
+//   } finally {
+//     if (connection) connection.release();
+//   }
+// };
+export { getAllRegisteredMembers, getProfilesByUser, assignTagToUser, disableAssignedTagToUser,
+   deleteRegisteredMember };
